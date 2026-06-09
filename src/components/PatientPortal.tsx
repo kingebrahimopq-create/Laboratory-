@@ -7,6 +7,7 @@ import {
   MapPin, HelpCircle, LogOut, CheckCircle2, ChevronLeft, 
   TrendingUp, Activity, ClipboardList, PlusCircle, Compass, Check
 } from 'lucide-react';
+import InteractiveMap from './InteractiveMap';
 
 interface PatientPortalProps {
   currentPatient: Patient;
@@ -553,8 +554,8 @@ export default function PatientPortal({
                   </div>
 
                   <InteractiveMap
-                    lang={lang}
-                    currency={curr}
+                    lang={language}
+                    currency={currency}
                     initialLat={gpsLat || undefined}
                     initialLng={gpsLng || undefined}
                     onLocationSelect={(latitude, longitude, address) => {

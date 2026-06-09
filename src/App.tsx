@@ -28,6 +28,10 @@ export default function App() {
   const [settings, setSettings] = useState<DoctorSettings>(() => ClinicalDatabase.getSettings());
   const [loginSession, setLoginSession] = useState<{ role: 'admin' | 'receptionist' } | null>(null);
 
+  // App-wide language and currency context
+  const [language, setLanguage] = useState<'ar' | 'en'>('ar');
+  const currency = settings.currency || 'SAR';
+
   // Interface view states
   const [currentRole, setCurrentRole] = useState<UserRole | 'public_verify'>('public_verify');
   const [selectedPatientId, setSelectedPatientId] = useState<string>(''); // Blank by default
@@ -426,6 +430,13 @@ export default function App() {
                        ) : (
                          <LoginPortal
                            settings={settings}
+                            patients={patients}
+                            onRegisterPatientBySelf={handleRegisterPatient}
+                            onPatientLoginSelect={(id) => {
+                              setSelectedPatientId(id);
+                              setCurrentRole('patient');
+                            }}
+                            language={language}
                            onLogin={(role, isBiometric) => {
                              setLoginSession({ role });
                              if (role === 'admin') {
@@ -469,6 +480,13 @@ export default function App() {
                        ) : (
                          <LoginPortal
                            settings={settings}
+                            patients={patients}
+                            onRegisterPatientBySelf={handleRegisterPatient}
+                            onPatientLoginSelect={(id) => {
+                              setSelectedPatientId(id);
+                              setCurrentRole('patient');
+                            }}
+                            language={language}
                            onLogin={(role, isBiometric) => {
                              setLoginSession({ role });
                              if (role === 'admin') {
