@@ -75,7 +75,10 @@ export const ClinicalDatabase = {
     try {
       const stored = localStorage.getItem(KEY_PATIENTS);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.length > 0) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to read patients from storage:', e);
@@ -113,7 +116,10 @@ export const ClinicalDatabase = {
     try {
       const stored = localStorage.getItem(KEY_APPOINTMENTS);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.length > 0) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to read appointments from storage:', e);
@@ -149,7 +155,10 @@ export const ClinicalDatabase = {
     try {
       const stored = localStorage.getItem(KEY_TESTS);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.length > 0) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to read tests from storage:', e);

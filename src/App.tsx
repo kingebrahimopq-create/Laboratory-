@@ -34,7 +34,10 @@ export default function App() {
 
   // Interface view states
   const [currentRole, setCurrentRole] = useState<UserRole | 'public_verify'>('public_verify');
-  const [selectedPatientId, setSelectedPatientId] = useState<string>(''); // Blank by default
+  const [selectedPatientId, setSelectedPatientId] = useState<string>(() => {
+    const list = ClinicalDatabase.getPatients();
+    return list[0]?.id || '';
+  }); // Seeded to first patient by default to avoid blank screen or crash
   
   // Biometric session verification status
   const [isBiometricVerified, setIsBiometricVerified] = useState<boolean>(false);
