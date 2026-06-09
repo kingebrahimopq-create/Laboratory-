@@ -21,18 +21,10 @@ jobs:
         node-version: 18
 
     - name: Install Dependencies
-      run: npm install
+      run: npm install --legacy-peer-deps
 
     - name: Build Web App
       run: npm run build
-
-    - name: Set up Electron Builder
-      run: npm install -D electron electron-builder
-
-    - name: Create Electron Entry Point
-      run: |
-        echo "const { app, BrowserWindow } = require('electron'); const path = require('path'); function createWindow () { const win = new BrowserWindow({ width: 800, height: 600 }); win.loadFile(path.join(__dirname, 'dist', 'index.html')); } app.whenReady().then(createWindow);" > main.js
-        echo "{\"name\":\"mylab-system\",\"version\":\"1.0.0\",\"main\":\"main.js\",\"build\":{\"appId\":\"com.mylab.windows\",\"win\":{\"target\":\"nsis\"}}}" > electron-builder.json
 
     - name: Compile Windows Installer
       run: npx electron-builder --win -c electron-builder.json

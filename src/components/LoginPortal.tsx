@@ -277,12 +277,6 @@ export default function LoginPortal({
                 <span>{t.btnPasscodeLogin}</span>
                 <ArrowRight className={`w-4 h-4 ${language === 'ar' ? 'rotate-180' : ''}`} />
               </button>
-
-              <span className="text-[10px] text-slate-400 mt-2 block leading-normal text-center">
-                {language === 'ar' 
-                  ? '💡 البريد الإلكتروني الافتراضي للطبيب: mhm763517@gmail.com | رمز المرور: doctor أو 0e02ddd1' 
-                  : '💡 Default Doctor email: mhm763517@gmail.com | Passcode: doctor or 0e02ddd1'}
-              </span>
             </form>
           </div>
         )}
@@ -293,7 +287,7 @@ export default function LoginPortal({
               <label className="text-xs font-bold text-slate-700 block mb-1.5">{t.receptionUsernameLabel}</label>
               <input
                 type="text"
-                placeholder={language === 'ar' ? 'المعرف المعطى من الدكتور (الافتراضي: receptionist)' : 'Username (Default: receptionist)'}
+                placeholder={language === 'ar' ? 'المعرف المعتمد لموظف الاستقبال' : 'Receptionist Username'}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:border-emerald-600 outline-none transition-all text-center"
@@ -305,7 +299,7 @@ export default function LoginPortal({
               <label className="text-xs font-bold text-slate-700 block mb-1.5">{t.receptionPasswordLabel}</label>
               <input
                 type="password"
-                placeholder={language === 'ar' ? 'كلمة السر المعتمدة (الافتراضي: 123)' : 'Password (Default: 123)'}
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold font-mono focus:border-emerald-600 outline-none transition-all text-center"
@@ -335,11 +329,6 @@ export default function LoginPortal({
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-mono font-bold focus:border-emerald-600 outline-none transition-all text-center"
                 required
               />
-              <span className="text-[10px] text-slate-400 mt-2 block leading-normal text-center">
-                {language === 'ar' 
-                  ? '💡 تلميح للاختبار: اكتب الرقم الطبي لمريض مسجل (مثال: 2980512 لأحمد أو سارة: 2940120)' 
-                  : '💡 Hint: Write a registered ID (e.g. 2980512 for Ahmed, or 2940120 for Sarah)'}
-              </span>
             </div>
 
             <button

@@ -28,12 +28,9 @@ jobs:
       - name: Build Web Assets
         run: npm run build
 
-      - name: Install Electron Builder
-        run: npm install --save-dev electron electron-builder
-
       - name: package Electron App
         run: |
-          npx electron-builder --windows --dir
+          npx electron-builder --win --dir
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -67,7 +64,6 @@ jobs:
 
       - name: Initialize Capacitor Android
         run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android --save
           npx cap add android || true
           npx cap sync android
 
