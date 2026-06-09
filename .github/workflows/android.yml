@@ -39,8 +39,7 @@ jobs:
 
     - name: Initialize Capacitor
       run: |
-        npx cap init "MyLab LIMS" "com.mylab.android" --web-dir dist
-        npx cap add android
+        npx cap add android || true
         npx cap sync android
 
     - name: Build Android APK

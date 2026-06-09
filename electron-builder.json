@@ -1,0 +1,15 @@
+{
+  "appId": "com.mylab.lims",
+  "productName": "My Lab LIMS",
+  "directories": {
+    "output": "dist-electron"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": "dir"
+  }
+}
