@@ -525,7 +525,68 @@ export default function App() {
             {/* Right Column (Clinical AI Assistant Panel Sidebar) */}
             <div className="lg:col-span-1 no-print h-full lg:sticky lg:top-4 space-y-4">
               
-              
+              {/* Modern Apps Download Center Card */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-3xl shadow-md border border-slate-700/60 space-y-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/10 rounded-full blur-xl pointer-events-none" />
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-teal-500/20 text-teal-400 rounded-lg">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-xs font-black tracking-wide text-teal-300">مركز تحميل التطبيقات الذكية</h3>
+                </div>
+                
+                <p className="text-[10px] leading-relaxed text-slate-300">
+                  تم بناء نسخ أصلية متكاملة لجميع الأنظمة محليًا وسحابيًا. يمكنك تحميل ملفات التثبيت مباشرة لتشغيل النظام على هاتفك أو حاسوبك الشخصي:
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  {/* Windows Download Button */}
+                  <a 
+                    href="https://github.com/kingebrahimopq-create/Laboratory-/actions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between bg-white/10 hover:bg-white/15 border border-white/5 p-2.5 rounded-xl transition-all group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Laptop className="w-4 h-4 text-teal-450 group-hover:scale-110 transition-transform" />
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold text-white">تطبيق الويندوز (Windows)</div>
+                        <div className="text-[8px] text-slate-405">ملف تثبيت مكتبي (.EXE)</div>
+                      </div>
+                    </div>
+                    <span className="text-[9px] bg-teal-500/20 text-teal-305 px-2 py-0.5 rounded-full font-bold">تحميل</span>
+                  </a>
+
+                  {/* Android Download Button */}
+                  <a 
+                    href="https://github.com/kingebrahimopq-create/Laboratory-/actions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between bg-white/10 hover:bg-white/15 border border-white/5 p-2.5 rounded-xl transition-all group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold text-white">تطبيق الاندرويد (Android)</div>
+                        <div className="text-[8px] text-slate-405">حزمة تثبيت الجوال (.APK)</div>
+                      </div>
+                    </div>
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-305 px-2 py-0.5 rounded-full font-bold">تحميل</span>
+                  </a>
+                </div>
+
+                <div className="pt-2 border-t border-white/5 text-[9px] text-slate-400 text-center flex flex-col gap-1">
+                  <span>لأحدث البنايات، اضغط على تحميل ثم اختر الملف من قسم <b>Artifacts</b></span>
+                  <a 
+                    href="https://github.com/kingebrahimopq-create/Laboratory-/releases"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-400 hover:underline font-bold"
+                  >
+                    أو تصفح الإصدارات الجاهزة (Releases) 🚀
+                  </a>
+                </div>
+              </div>
 
               {/* Biometric Controller & Reset Fast Box */}
               <div className="bg-white border border-slate-200.5 p-4 rounded-3xl shadow-sm text-xs text-slate-650 space-y-3">

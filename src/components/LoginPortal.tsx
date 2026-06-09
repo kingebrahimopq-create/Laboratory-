@@ -4,7 +4,8 @@ import { TRANSLATIONS } from '../lib/translations';
 import { 
   ShieldCheck, Fingerprint, KeyRound, User, Lock, 
   ArrowRight, HeartPulse, Sparkles, CheckCircle2, ShieldAlert,
-  Clock, AlertCircle, ScanBarcode, UserPlus, Phone, Calendar
+  Clock, AlertCircle, ScanBarcode, UserPlus, Phone, Calendar,
+  Laptop, Smartphone
 } from 'lucide-react';
 
 interface LoginPortalProps {
@@ -457,6 +458,59 @@ export default function LoginPortal({
             <span>{t.byPassVerify}</span>
           </button>
         </div>
+      </div>
+
+      {/* Secondary Card: Applications Download Center */}
+      <div className="w-full max-w-xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 text-white border border-slate-800 rounded-3xl shadow-xl p-5 mt-6 space-y-4 relative overflow-hidden animate-fadeIn">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
+        
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-teal-500/20 text-teal-400 rounded-xl">
+            <HeartPulse className="w-5 h-5 text-teal-400" />
+          </div>
+          <div>
+            <h3 className="text-xs font-black tracking-wide text-teal-300">مركز تحميل تطبيقات المختبر السحابية (LIMS Native App Clients)</h3>
+            <p className="text-[10px] text-slate-400 mt-0.5">احصل على التطبيقات المخصصة لمختلف أنظمة التشغيل الخاصة بمعملك</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* Windows Button */}
+          <a
+            href="https://github.com/kingebrahimopq-create/Laboratory-/actions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/5 p-3 rounded-2xl transition-all group duration-250 cursor-pointer"
+          >
+            <div className="p-2 bg-blue-500/15 rounded-xl text-blue-400 group-hover:scale-105 transition-transform">
+              <Laptop className="w-5 h-5" />
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] font-black text-white font-sans">تحميل للكمبيوتر (Windows)</div>
+              <div className="text-[9px] text-slate-405 font-sans">ملف تثبيت مكتبي (.EXE)</div>
+            </div>
+          </a>
+
+          {/* Android Button */}
+          <a
+            href="https://github.com/kingebrahimopq-create/Laboratory-/actions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/5 p-3 rounded-2xl transition-all group duration-250 cursor-pointer"
+          >
+            <div className="p-2 bg-emerald-500/15 rounded-xl text-emerald-400 group-hover:scale-105 transition-transform">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] font-black text-white font-sans">تحميل للهاتف (Android)</div>
+              <div className="text-[9px] text-slate-405 font-sans">ملف أندرويد مباشر (.APK)</div>
+            </div>
+          </a>
+        </div>
+
+        <p className="text-[9.5px] leading-relaxed text-slate-400 text-center border-t border-white/5 pt-3">
+          💡 <b>نصيحة:</b> اضغط على التحميل، وسيتم توجيهك لعمليات البناء التلقائية في GitHub. اختر آخر بناء ناجح ثم انزل لقسم <b>Artifacts</b> لتحميل التطبيق مجانًا، أو تصفح <a href="https://github.com/kingebrahimopq-create/Laboratory-/releases" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline font-bold">قائمة الإصدارات (Releases)</a>.
+        </p>
       </div>
 
     </div>
