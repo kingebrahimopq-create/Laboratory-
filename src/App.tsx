@@ -26,14 +26,14 @@ export default function App() {
 
   // Doctor settings and authentication session states
   const [settings, setSettings] = useState<DoctorSettings>(() => ClinicalDatabase.getSettings());
-  const [loginSession, setLoginSession] = useState<{ role: 'admin' | 'receptionist' } | null>(null);
+  const [loginSession, setLoginSession] = useState<{ role: 'admin' | 'receptionist' | 'patient', patientId?: string } | null>(null);
 
   // App-wide language and currency context
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
   const currency = settings.currency || 'SAR';
 
   // Interface view states
-  const [currentRole, setCurrentRole] = useState<UserRole | 'public_verify'>('public_verify');
+  const [currentRole, setCurrentRole] = useState<UserRole | 'public_verify' | 'none'>('none');
   const [selectedPatientId, setSelectedPatientId] = useState<string>(() => {
     const list = ClinicalDatabase.getPatients();
     return list[0]?.id || '';
@@ -169,7 +169,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col antialiased text-slate-800" dir="rtl">
-      
       {/* Main Container Wrapper */}
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
         
@@ -182,6 +181,37 @@ export default function App() {
               onBack={() => setViewingTestReport(null)}
               onVerifySelf={() => handleVerifyReportSelf(viewingTestReport.qrToken)}
               settings={settings}
+            />
+          </div>
+        ) : currentRole === 'public_verify' ? (
+          <div className="animate-fadeIn">
+            <PublicVerification
+              tests={tests}
+              patients={patients}
+              initialToken={directVerifyToken}
+              onClose={() => {
+                setCurrentRole('none');
+                setDirectVerifyToken('');
+              }}
+            />
+          </div>
+        ) : !loginSession ? (
+          <div className="animate-fadeIn">
+            <LoginPortal
+                 settings={settings}
+                 patients={patients}
+                 onRegisterPatientBySelf={(pat) => { handleRegisterPatient(pat); }}
+                 onPatientLoginSelect={(id) => {
+                     setLoginSession({ role: 'patient', patientId: id });
+                 }}
+                 language={language}
+                 onLogin={(role, isBiometric) => {
+                     setLoginSession({ role });
+                     if (role === 'admin') setIsBiometricVerified(true);
+                 }}
+                 onPublicVerify={() => {
+                     setCurrentRole('public_verify');
+                 }}
             />
           </div>
         ) : (
@@ -198,265 +228,82 @@ export default function App() {
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-bold tracking-widest bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full uppercase flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute"></span>
-                        مزامنة سحابية سريعة ونشطة
-                      </span>
-                      <span className="w-1 bg-slate-300 h-3"></span>
-                      <span className="text-slate-500 text-[10px] font-bold">بوابة الإدارة الطبية المحدثة فوريًا</span>
+                       <span className="text-[10px] font-bold tracking-widest bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full uppercase flex items-center gap-1.5">
+                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute"></span>
+                         مزامنة سحابية سريعة ونشطة
+                       </span>
                     </div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1">نظام معلومات مختبرات MY LAB</h1>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1 truncate max-w-[250px] sm:max-w-none">{settings.labNameAr || "نظام معلومات مختبرات MY LAB"}</h1>
                   </div>
                 </div>
 
-                {/* Account/Role Fast Switcher tabs (No-print) */}
                 <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
                   <div className="bg-slate-100 p-1 rounded-xl flex items-center min-w-max">
-                    
-                    {/* Public QR Check Tab */}
+                     {loginSession.role === 'admin' && (
+                       <>
+                          <button onClick={() => setCurrentRole('admin')} className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${currentRole === 'admin' || currentRole === 'none' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+                            <Building2 className="w-3.5 h-3.5" /> الإدارة
+                          </button>
+                          <button onClick={() => setCurrentRole('technician')} className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${currentRole === 'technician' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+                            <ClipboardList className="w-3.5 h-3.5" /> الفني
+                          </button>
+                          <button onClick={() => setCurrentRole('receptionist')} className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${currentRole === 'receptionist' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+                            <UserPlus className="w-3.5 h-3.5" /> الاستقبال
+                          </button>
+                          <button onClick={() => setCurrentRole('patient')} className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${currentRole === 'patient' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+                            <User className="w-3.5 h-3.5" /> المريض
+                          </button>
+                       </>
+                     )}
+                     
+                    {/* Logout button */}
                     <button
                       onClick={() => {
-                        setDirectVerifyToken('');
-                        setCurrentRole('public_verify');
+                        setLoginSession(null);
+                        setCurrentRole('none');
+                        setIsBiometricVerified(false);
                       }}
-                      className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                        currentRole === 'public_verify' 
-                          ? 'bg-slate-900 text-white' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                      id="role-public-verify"
+                      className="px-3 py-2 text-rose-600 hover:text-rose-700 font-extrabold text-[11px] flex items-center gap-1 ml-1 cursor-pointer bg-rose-50/70 border border-rose-100 rounded-lg transition-all"
+                      title="إغلاق خروج من النظام"
                     >
-                      <ScanBarcode className="w-3.5 h-3.5" />
-                      <span>المصادقة السحابية (تحقق QR)</span>
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>خروج</span>
                     </button>
-
-                    {/* Patient role */}
-                    <button
-                      onClick={() => setCurrentRole('patient')}
-                      className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                        currentRole === 'patient' 
-                          ? 'bg-teal-600 text-white shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                      id="role-patient"
-                    >
-                      <User className="w-3.5 h-3.5" />
-                      <span>بوابة المرضى والاستعلام السحابي</span>
-                    </button>
-
-                    {/* Reception role */}
-                    <button
-                      onClick={() => setCurrentRole('receptionist')}
-                      className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                        currentRole === 'receptionist' 
-                          ? 'bg-teal-600 text-white shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                      id="role-receptionist"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>الاستقبال والفواتير</span>
-                    </button>
-
-                    {/* Lab Tech role */}
-                    <button
-                      onClick={() => setCurrentRole('technician')}
-                      className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                        currentRole === 'technician' 
-                          ? 'bg-teal-600 text-white shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                      id="role-technician"
-                    >
-                      <ClipboardList className="w-3.5 h-3.5" />
-                      <span>فني الأجهزة المخبرية</span>
-                    </button>
-
-                    {/* Admin Doctor role with Biometric lock status */}
-                    <button
-                      onClick={() => setCurrentRole('admin')}
-                      className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 relative ${
-                        currentRole === 'admin' 
-                          ? 'bg-teal-600 text-white shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                      id="role-admin"
-                    >
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>الإدارة والمدير الطبي</span>
-                      {isBiometricVerified ? (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 border border-white inline-block animate-pulse shrink-0" title="تم التحقق بالبصمة" />
-                      ) : (
-                        <span className="w-2 h-2 rounded-full bg-amber-500 border border-white inline-block shrink-0" title="يتطلب بصمة الطبيب" />
-                      )}
-                    </button>
-
-                    {/* Logout button */}
-                    {loginSession && (
-                      <button
-                        onClick={() => {
-                          setLoginSession(null);
-                          setIsBiometricVerified(false);
-                          setCurrentRole('public_verify');
-                        }}
-                        className="px-3 py-2 text-rose-600 hover:text-rose-700 font-extrabold text-[11px] flex items-center gap-1 ml-1 cursor-pointer bg-rose-50/70 border border-rose-100 rounded-lg transition-all"
-                        title="إغلاق حماية LIMS"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>خروج</span>
-                      </button>
-                    )}
-
                   </div>
                 </div>
               </div>
 
-              {/* System Overview Dashboard Hint */}
-              <div className="bg-white border border-slate-100 p-4 rounded-2xl flex items-start gap-3 text-xs text-slate-500 shadow-sm no-print">
-                <Info className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold text-slate-800">نظام إدارة المختبرات الطبية السحابي (LIMS & EHR)</span>
-                  <p className="mt-1 leading-relaxed text-[11px]">
-                    منصة متكاملة لتسجيل المرضى، إدارة سحب العينات، والربط المباشر مع أجهزة التحليل. تتيح المنصة اعتماد النتائج طبياً باستخدام التوقيع الرقمي والباركود لضمان سلامة وموثوقية التقارير للمرضى.
-                  </p>
-                </div>
-              </div>
+               {/* Live rendering based on role */}
+               <div className="transition-all duration-200">
+                  { (loginSession.role === 'patient' || (loginSession.role === 'admin' && currentRole === 'patient')) && (
+                       <PatientPortal
+                         currentPatient={patients.find(p => p.id === (loginSession.role === 'patient' ? loginSession.patientId : selectedPatientId)) || patients[0]}
+                         tests={tests}
+                         appointments={appointments}
+                         language={language}
+                         currency={currency}
+                         onLogout={() => { setLoginSession(null); setCurrentRole('none'); }}
+                         onSelectTest={(t) => setViewingTestReport(t)}
+                         onBookAppointment={handleBookAppointment}
+                       />
+                  )}
 
-              {/* RENDER CURRENT ROLE SELECTION VIEW OR EMULATED CLIENTS */}
-                <div className="space-y-6">
-                  
-                  {/* Visual guidelines */}
-                  <div className="bg-white border border-slate-100 p-4 rounded-2xl flex items-start gap-3 text-xs text-slate-500 shadow-sm no-print">
-                    <Info className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold text-slate-800">💡 بوابة التحكم الطبية السحابية المتكاملة (الويب):</span>
-                      <p className="mt-1 leading-relaxed text-[11px]">
-                        هذه الواجهة تمثل الوصول الإداري متعدد الأدوار عن بعد عبر متصفحات الويب للتحقق والتحكم في البيانات. انتقل بين علامات دور المستخدم لمعاينة تجربة كل مستخدم على نظام "MY LAB".
-                      </p>
-                    </div>
-                  </div>
+                  { (loginSession.role === 'receptionist' || (loginSession.role === 'admin' && currentRole === 'receptionist')) && (
+                       <ReceptionPortal
+                         patients={patients}
+                         tests={tests}
+                         appointments={appointments}
+                         language={language}
+                         currency={currency}
+                         onRegisterPatient={handleRegisterPatient}
+                         onConfirmAppointment={handleConfirmAppointment}
+                         onCancelAppointment={handleCancelAppointment}
+                         onLogTestRequest={handleLogTestRequest}
+                       />
+                  )}
 
-                  {/* Switch view portals */}
-                  <div className="bg-white rounded-2xl p-4 sm:px-6 shadow-sm border border-slate-100 flex flex-wrap items-center justify-between gap-4 no-print select-none">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-400 ml-1">بوابات تبديل الأدوار:</span>
-                      
-                      <div className="flex bg-slate-100 p-1 rounded-xl flex-wrap gap-1.5">
-                        {/* Patient role */}
-                        <button
-                          onClick={() => setCurrentRole('patient')}
-                          className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                            currentRole === 'patient' 
-                              ? 'bg-teal-600 text-white shadow-sm' 
-                              : 'text-slate-500 hover:text-slate-800'
-                          }`}
-                          id="role-patient"
-                        >
-                          <User className="w-3.5 h-3.5" />
-                          <span>بوابة المريض أحمد</span>
-                        </button>
-
-                        {/* Reception role */}
-                        <button
-                          onClick={() => setCurrentRole('receptionist')}
-                          className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                            currentRole === 'receptionist' 
-                              ? 'bg-teal-600 text-white shadow-sm' 
-                              : 'text-slate-500 hover:text-slate-800'
-                          }`}
-                          id="role-receptionist"
-                        >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>الاستقبال والفواتير</span>
-                        </button>
-
-                        {/* Lab Tech role */}
-                        <button
-                          onClick={() => setCurrentRole('technician')}
-                          className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                            currentRole === 'technician' 
-                              ? 'bg-teal-600 text-white shadow-sm' 
-                              : 'text-slate-500 hover:text-slate-800'
-                          }`}
-                          id="role-technician"
-                        >
-                          <ClipboardList className="w-3.5 h-3.5" />
-                          <span>فني الأجهزة المخبرية</span>
-                        </button>
-
-                        {/* Admin Doctor role */}
-                        <button
-                          onClick={() => setCurrentRole('admin')}
-                          className={`px-3 py-2 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                            currentRole === 'admin' 
-                              ? 'bg-teal-600 text-white shadow-sm' 
-                              : 'text-slate-500 hover:text-slate-800'
-                          }`}
-                          id="role-admin"
-                        >
-                          <Building2 className="w-3.5 h-3.5" />
-                          <span>الإدارة والمدير الطبي</span>
-                          {isBiometricVerified && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse border border-white" />}
-                        </button>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  {/* Live rendering */}
-                  <div className="transition-all duration-200">
-                    {currentRole === 'patient' && (
-                      <PatientPortal
-                        currentPatient={patients.find(p => p.id === selectedPatientId) || patients[0]}
-                        tests={tests}
-                        appointments={appointments}
-                        language={language}
-                        currency={currency}
-                        onLogout={() => setCurrentRole('public_verify')}
-                        onSelectTest={(t) => setViewingTestReport(t)}
-                        onBookAppointment={handleBookAppointment}
-                      />
-                    )}
-
-                     {currentRole === 'receptionist' && (
-                       (loginSession?.role === 'receptionist' || loginSession?.role === 'admin') ? (
-                         <ReceptionPortal
-                           patients={patients}
-                           tests={tests}
-                           appointments={appointments}
-                           language={language}
-                           currency={currency}
-                           onRegisterPatient={handleRegisterPatient}
-                           onConfirmAppointment={handleConfirmAppointment}
-                           onCancelAppointment={handleCancelAppointment}
-                           onLogTestRequest={handleLogTestRequest}
-                         />
-                       ) : (
-                         <LoginPortal
-                           settings={settings}
-                            patients={patients}
-                            onRegisterPatientBySelf={handleRegisterPatient}
-                            onPatientLoginSelect={(id) => {
-                              setSelectedPatientId(id);
-                              setCurrentRole('patient');
-                            }}
-                            language={language}
-                           onLogin={(role, isBiometric) => {
-                             setLoginSession({ role });
-                             if (role === 'admin') {
-                               setIsBiometricVerified(true);
-                             }
-                           }}
-                           onPublicVerify={() => {
-                             setLoginSession({ role: 'admin' });
-                             setCurrentRole('public_verify');
-                           }}
-                         />
-                       )
-                     )}
-
-                     {currentRole === 'technician' && (
+                  { (loginSession.role === 'admin' && currentRole === 'technician') && (
                        settings.enableTechnicianPlatform ? (
                          <TechnicianPortal
                            tests={tests}
@@ -468,58 +315,22 @@ export default function App() {
                            تم إيقاف صلاحية فني الأجهزة المختبرية بالكامل بقرار إداري من الطبيب المالك.
                          </div>
                        )
-                     )}
+                  )}
 
-                     {currentRole === 'admin' && (
-                       loginSession?.role === 'admin' ? (
-                           <AdminPortal
-                             tests={tests}
-                             patients={patients}
-                             language={language}
-                             currency={currency}
-                             onApproveTest={handleApproveTest}
-                             onModifyReferenceCost={handleModifyReference}
-                             settings={settings}
-                             onUpdateSettings={handleUpdateSettings}
-                           />
-                       ) : (
-                         <LoginPortal
-                           settings={settings}
-                            patients={patients}
-                            onRegisterPatientBySelf={handleRegisterPatient}
-                            onPatientLoginSelect={(id) => {
-                              setSelectedPatientId(id);
-                              setCurrentRole('patient');
-                            }}
-                            language={language}
-                           onLogin={(role, isBiometric) => {
-                             setLoginSession({ role });
-                             if (role === 'admin') {
-                               setIsBiometricVerified(true);
-                             }
-                           }}
-                           onPublicVerify={() => {
-                             setLoginSession({ role: 'admin' });
-                             setCurrentRole('public_verify');
-                           }}
-                         />
-                       )
-                     )}
+                  { (loginSession.role === 'admin' && (currentRole === 'admin' || currentRole === 'none')) && (
+                       <AdminPortal
+                         tests={tests}
+                         patients={patients}
+                         language={language}
+                         currency={currency}
+                         onApproveTest={handleApproveTest}
+                         onModifyReferenceCost={handleModifyReference}
+                         settings={settings}
+                         onUpdateSettings={handleUpdateSettings}
+                       />
+                  )}
+               </div>
 
-                    {currentRole === 'public_verify' && (
-                      <PublicVerification
-                        tests={tests}
-                        patients={patients}
-                        initialToken={directVerifyToken}
-                        onClose={() => {
-                          setCurrentRole('admin');
-                          setDirectVerifyToken('');
-                        }}
-                      />
-                    )}
-                  </div>
-
-                </div>
             </div>
 
             {/* Right Column (Clinical AI Assistant Panel Sidebar) */}
@@ -577,39 +388,32 @@ export default function App() {
 
                 <div className="pt-2 border-t border-white/5 text-[9px] text-slate-400 text-center flex flex-col gap-1">
                   <span>لتحميل أحدث تطبيق مباشر، اضغط على زر التحميل بالأعلى ثم اختر الملف المرفق لتنزيله فوراً.</span>
-                  <a 
-                    href="https://github.com/kingebrahimopq-create/Laboratory-/releases"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-teal-400 hover:underline font-bold"
-                  >
-                    أو تصفح وتنزيل كل الإصدارات الطبية الجاهزة (Releases) 🚀
-                  </a>
                 </div>
               </div>
 
-              {/* Biometric Controller & Reset Fast Box */}
-              <div className="bg-white border border-slate-200.5 p-4 rounded-3xl shadow-sm text-xs text-slate-650 space-y-3">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
-                  <Fingerprint className="w-4.5 h-4.5 text-emerald-600 animate-pulse" />
-                  <span>لوحة أدوات التأمين البيومتري:</span>
+              {loginSession.role === 'admin' && (
+                <div className="bg-white border border-slate-200.5 p-4 rounded-3xl shadow-sm text-xs text-slate-650 space-y-3">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
+                    <Fingerprint className="w-4.5 h-4.5 text-emerald-600 animate-pulse" />
+                    <span>لوحة أدوات التأمين البيومتري:</span>
+                  </div>
+                  <p className="text-[10.5px] leading-relaxed text-slate-500">
+                    حالة هويتك الحالية: {isBiometricVerified ? (
+                      <span className="text-emerald-600 font-black">✓ مصادق ومصرح (المستشفيات)</span>
+                    ) : (
+                      <span className="text-amber-500 font-bold">غير مصادق (بوابة التوقيع مغلقة)</span>
+                    )}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setIsBiometricVerified(!isBiometricVerified)}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 px-2 rounded-xl text-[10px] transition-all cursor-pointer text-center border border-slate-150"
+                    >
+                      {isBiometricVerified ? 'إبطال البصمة (قفل) 🔒' : 'تفعيل إقرار بصمة الطبيب ✓'}
+                    </button>
+                  </div>
                 </div>
-                <p className="text-[10.5px] leading-relaxed text-slate-500">
-                  حالة هويتك الحالية: {isBiometricVerified ? (
-                    <span className="text-emerald-600 font-black">✓ مصادق ومصرح (المستشفيات)</span>
-                  ) : (
-                    <span className="text-amber-500 font-bold">غير مصادق (بوابة التوقيع مغلقة)</span>
-                  )}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsBiometricVerified(!isBiometricVerified)}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 px-2 rounded-xl text-[10px] transition-all cursor-pointer text-center border border-slate-150"
-                  >
-                    {isBiometricVerified ? 'إبطال البصمة (قفل) 🔒' : 'تفعيل إقرار بصمة الطبيب ✓'}
-                  </button>
-                </div>
-              </div>
+              )}
 
             </div>
 
@@ -618,10 +422,9 @@ export default function App() {
 
       </div>
 
-      {/* Footer copyright (Hidden during printing) */}
       <footer className="bg-white border-t border-slate-100 py-6 text-center text-xs text-slate-400 no-print mt-12 bg-slate-50/20">
         <p className="font-sans leading-relaxed">
-          جميع الحقوق محفوظة © معمل "MY LAB" لـ معلومات المختبرات وإدارة النظم السحابية الطبية 2026.
+          جميع الحقوق محفوظة © معمل "MY LAB" لـ معلومات المختبرات وإدارة النظم السحابية الطبية {(new Date()).getFullYear()}.
         </p>
         <p className="font-semibold text-slate-400 mt-1">
           مُدمج بنطام تفويض البصمات الإلكتروني والأكواد الذكية لمنع تزييف نتائج الرعاية الصحية الطبية.
