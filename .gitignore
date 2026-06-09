@@ -1,0 +1,15 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+push_code.ts
+check_commit_files.ts
+check_cwd.ts
+check_reflog.ts
+restore_files.ts
+restore_to_initial.ts
+push_code_clean.ts

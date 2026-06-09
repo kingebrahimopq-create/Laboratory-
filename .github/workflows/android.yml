@@ -1,0 +1,56 @@
+# .github/workflows/android.yml
+name: Build Android Application
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    - name: Setup Java SDK
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build React App
+      run: npm run build
+
+    - name: Install Capacitor Core & Android
+      run: |
+        npm install @capacitor/core @capacitor/android
+        npm install -D @capacitor/cli
+
+    - name: Initialize Capacitor
+      run: |
+        npx cap init "MyLab LIMS" "com.mylab.android" --web-dir dist
+        npx cap add android
+        npx cap sync android
+
+    - name: Build Android APK
+      working-directory: ./android
+      run: |
+        chmod +x ./gradlew
+        ./gradlew assembleDebug
+
+    - name: Upload Android APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: MyLab-Android-App
+        path: android/app/build/outputs/apk/debug/app-debug.apk

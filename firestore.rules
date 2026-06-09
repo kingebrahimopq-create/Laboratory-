@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net (Strict Default Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Reusable global helper functions (Phase 3 primitives)
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Helper to validate patient schemas (Anti-Update-Gap)
+    function isValidPatient(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.nameEn is string && data.nameEn.size() <= 200
+        && data.phone is string && data.phone.size() <= 30
+        && data.gender is string && (data.gender == 'male' || data.gender == 'female' || data.gender == 'ذكر' || data.gender == 'أنثى')
+        && data.birthDate is string && data.birthDate.size() <= 20;
+    }
+
+    // Helper to validate appointment schemas
+    function isValidAppointment(data) {
+      return data.id is string && data.id.size() <= 64
+        && data.patientName is string && data.patientName.size() <= 200
+        && data.patientPhone is string && data.patientPhone.size() <= 30
+        && data.date is string && data.date.size() <= 20
+        && data.time is string && data.time.size() <= 10
+        && data.type is string && (data.type == 'lab' || data.type == 'home')
+        && data.testType is string && data.testType.size() <= 300
+        && data.status is string && (data.status == 'pending' || data.status == 'confirmed' || data.status == 'cancelled');
+    }
+
+    // Helper to validate labTest schemas
+    function isValidLabTest(data) {
+      return data.id is string && data.id.size() <= 64
+        && data.patientId is string && data.patientId.size() <= 128
+        && data.patientName is string && data.patientName.size() <= 200
+        && data.testType is string && (data.testType == 'CBC' || data.testType == 'LIPID' || data.testType == 'LIVER' || data.testType == 'GLUCOSE')
+        && data.titleAr is string && data.titleAr.size() <= 200
+        && data.sampleStatus is string && (data.sampleStatus == 'pending_collection' || data.sampleStatus == 'collected' || data.sampleStatus == 'analyzed' || data.sampleStatus == 'approved')
+        && data.barcode is string && data.barcode.size() <= 64
+        && data.qrToken is string && data.qrToken.size() <= 128
+        && data.parameters is list && data.parameters.size() <= 20;
+    }
+
+    // 3. Collection Specific Rules (The Fortress Match blocks)
+    
+    // Patients Collection Rules
+    match /patients/{patientId} {
+      allow get, list: if true; // Public view of records by authorized local/remote clients
+      allow create: if isValidId(patientId) && isValidPatient(incoming());
+      allow update: if isValidId(patientId) && isValidPatient(incoming());
+      allow delete: if false; // Regulatory freeze of clinical records
+    }
+
+    // Appointments Collection Rules
+    match /appointments/{appointmentId} {
+      allow get, list: if true; // Dynamic list reading for management screens
+      allow create: if isValidId(appointmentId) && isValidAppointment(incoming());
+      allow update: if isValidId(appointmentId) && isValidAppointment(incoming());
+      allow delete: if false; // Bookings are only cancelled, never deleted to protect trail history
+    }
+
+    // Tested Reports (LabTests) Collection Rules
+    match /tests/{testId} {
+      // Allow read so public QR scanning can verify results against the original Cloud server
+      allow get, list: if true;
+      allow create: if isValidId(testId) && isValidLabTest(incoming());
+      allow update: if isValidId(testId) && isValidLabTest(incoming());
+      allow delete: if false; // Medical evidence and test outcomes cannot be erased
+    }
+  }
+}

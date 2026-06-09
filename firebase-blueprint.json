@@ -1,0 +1,177 @@
+{
+  "entities": {
+    "patient": {
+      "title": "Patient",
+      "description": "Standardized electronic health record for patients in the clinical laboratory LIMS database",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "National identification number (or medical record number - MRN) of the patient"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the patient in Arabic"
+        },
+        "nameEn": {
+          "type": "string",
+          "description": "Full name of the patient in English"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Mobile number of the patient"
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["male", "female", "ذكر", "أنثى"],
+          "description": "Standardized gender of the patient"
+        },
+        "birthDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Birth date in format YYYY-MM-DD"
+        },
+        "bloodType": {
+          "type": "string",
+          "description": "Blood group type (e.g. O+, A-, etc.)"
+        }
+      },
+      "required": ["id", "name", "nameEn", "phone", "gender", "birthDate"]
+    },
+    "labTest": {
+      "title": "LabTest",
+      "description": "Laboratory sample analytical test record with individual parameter outcomes",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "System-generated unique clinical report number (e.g., LAB-2026-001)"
+        },
+        "patientId": {
+          "type": "string",
+          "description": "Associated patient MRN ID"
+        },
+        "patientName": {
+          "type": "string",
+          "description": "Patient full Arabic name"
+        },
+        "patientNameEn": {
+          "type": "string",
+          "description": "Patient full English name"
+        },
+        "testType": {
+          "type": "string",
+          "enum": ["CBC", "LIPID", "LIVER", "GLUCOSE"],
+          "description": "Clinical panel scientific code"
+        },
+        "titleAr": {
+          "type": "string",
+          "description": "Panel title in Arabic"
+        },
+        "titleEn": {
+          "type": "string",
+          "description": "Panel title in English"
+        },
+        "requestDate": {
+          "type": "string",
+          "description": "Date of request or record logging"
+        },
+        "sampleStatus": {
+          "type": "string",
+          "enum": ["pending_collection", "collected", "analyzed", "approved"],
+          "description": "Durable LIS workflow status"
+        },
+        "parameters": {
+          "type": "array",
+          "description": "Individual test items, values, units, and boundaries"
+        },
+        "cost": {
+          "type": "number",
+          "description": "Billing fee of the examination"
+        },
+        "paidAmount": {
+          "type": "number",
+          "description": "Total paid fee of the examination"
+        },
+        "approvedBy": {
+          "type": "string",
+          "description": "Full name of the verifying medical director"
+        },
+        "approvedAt": {
+          "type": "string",
+          "description": "Approval timestamp or date string"
+        },
+        "barcode": {
+          "type": "string",
+          "description": "Machine-readable clinical sample barcode ID"
+        },
+        "qrToken": {
+          "type": "string",
+          "description": "Unique cryptographic or dynamic authentication token"
+        }
+      },
+      "required": ["id", "patientId", "patientName", "testType", "titleAr", "sampleStatus", "parameters", "barcode", "qrToken"]
+    },
+    "appointment": {
+      "title": "Appointment",
+      "description": "Clinical test booking date, times, and extraction sites",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique booking slot reference ID"
+        },
+        "patientName": {
+          "type": "string",
+          "description": "Registered patient name"
+        },
+        "patientPhone": {
+          "type": "string",
+          "description": "Patient contact phoneNumber"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Scheduled reservation date"
+        },
+        "time": {
+          "type": "string",
+          "description": "Scheduled exact clinical time"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["lab", "home"],
+          "description": "Location code: laboratory visit vs home sample extraction service"
+        },
+        "testType": {
+          "type": "string",
+          "description": "Requested profile package title"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "confirmed", "cancelled"],
+          "description": "Booking status"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Pre-procedural instructions"
+        }
+      },
+      "required": ["id", "patientName", "patientPhone", "date", "time", "type", "testType", "status"]
+    }
+  },
+  "firestore": {
+    "/patients/{patientId}": {
+      "schema": "patient",
+      "description": "Primary healthcare patients list"
+    },
+    "/tests/{testId}": {
+      "schema": "labTest",
+      "description": "Medical lab test report records with high anti-counterfeiting verification links"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "appointment",
+      "description": "Medical lab visit or home nursing sample extraction appointments"
+    }
+  }
+}

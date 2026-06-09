@@ -1,0 +1,6 @@
+{
+  "name": "MY LAB - System",
+  "description": "نظام معلومات واستعلامات مختبرات التحاليل الطبية المتكامل لإدارة المختبر عن بعد ومتابعة المرضى والتقارير بمصادقة الرموز الذكية",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
