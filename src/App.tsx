@@ -197,12 +197,14 @@ export default function App() {
                     <HeartPulse className="w-8 h-8 animate-pulse text-white" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold tracking-widest bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full uppercase">
-                        LIMS & EHR CLOUD
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-bold tracking-widest bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full uppercase flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute"></span>
+                        مزامنة سحابية سريعة ونشطة
                       </span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      <span className="text-slate-400 text-[10px] font-bold">بوابة الإدارة السحابية عن بعد</span>
+                      <span className="w-1 bg-slate-300 h-3"></span>
+                      <span className="text-slate-500 text-[10px] font-bold">بوابة الإدارة الطبية المحدثة فوريًا</span>
                     </div>
                     <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1">نظام معلومات مختبرات MY LAB</h1>
                   </div>
@@ -240,7 +242,7 @@ export default function App() {
                       id="role-patient"
                     >
                       <User className="w-3.5 h-3.5" />
-                      <span>بوابة المريض أحمد</span>
+                      <span>بوابة المرضى والاستعلام السحابي</span>
                     </button>
 
                     {/* Reception role */}

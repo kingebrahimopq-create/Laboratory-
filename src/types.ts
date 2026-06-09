@@ -61,6 +61,8 @@ export interface DoctorSettings {
   doctorLicense: string;
   receptionUsername: string;
   receptionPassword: string;
+  doctorEmail?: string;
+  doctorPasscode?: string;
   receptionPermissions: string[]; // e.g. 'register_patient', 'billing', 'appointments', 'view_all_records'
   allowBiometricBypass: boolean;
   enableTechnicianPlatform: boolean;

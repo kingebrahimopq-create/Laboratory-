@@ -618,6 +618,29 @@ export default function AdminPortal({
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">البريد الإلكتروني للإدارة (المالك):</label>
+                <input
+                  type="email"
+                  value={settings.doctorEmail || "director@mylab.com"}
+                  onChange={(e) => onUpdateSettings({ ...settings, doctorEmail: e.target.value })}
+                  className="w-full text-right bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:border-emerald-600 outline-none transition-all font-mono"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">رمز المرور الأمني للإدارة (المالك):</label>
+                <input
+                  type="text"
+                  value={settings.doctorPasscode || "director_passcode_881"}
+                  onChange={(e) => onUpdateSettings({ ...settings, doctorPasscode: e.target.value })}
+                  className="w-full text-right bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:border-emerald-600 outline-none transition-all font-mono"
+                  required
+                />
+              </div>
+            </div>
+
             {/* Manual permission list */}
             <div className="bg-slate-50 border border-slate-150 p-4 rounded-xl space-y-2">
               <label className="block text-[11px] font-bold text-slate-700 mb-2">الصلاحيات الممنوحة حالياً للاستقبال:</label>

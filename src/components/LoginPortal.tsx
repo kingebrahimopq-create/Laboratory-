@@ -59,13 +59,11 @@ export default function LoginPortal({
     setErrorMsg('');
     setSuccessMsg('');
     
-    const configuredUser = settings.receptionUsername.trim().toLowerCase();
-    const configuredPass = settings.receptionPassword;
+    const configuredUser = (settings.receptionUsername || 'staff_reception_authorized').trim().toLowerCase();
+    const configuredPass = settings.receptionPassword || 'secure_reception_pass_990';
     const inputUser = username.trim().toLowerCase();
 
-    const isMatch = (inputUser === configuredUser && password === configuredPass) ||
-                    (inputUser === 'receptionist' && password === '123') ||
-                    (inputUser === 'admin' && password === 'admin');
+    const isMatch = (inputUser === configuredUser && password === configuredPass);
 
     if (isMatch) {
       onLogin('receptionist', false);
@@ -83,15 +81,11 @@ export default function LoginPortal({
     setSuccessMsg('');
     
     const emailLower = doctorEmail.trim().toLowerCase();
-    const isAuthorizedEmail = emailLower === 'ebrahimopq@gmail.com' || 
-                              emailLower === 'mhm763517@gmail.com' || 
-                              emailLower === 'admin@mylab.com' ||
-                              emailLower === '';
-    
-    const isAuthorizedPass = doctorPasscode === '0e02ddd1' || 
-                             doctorPasscode === 'doctor' || 
-                             doctorPasscode === 'admin' ||
-                             doctorPasscode === '123';
+    const configuredEmail = (settings.doctorEmail || 'director@mylab.com').trim().toLowerCase();
+    const configuredPass = settings.doctorPasscode || 'director_passcode_881';
+
+    const isAuthorizedEmail = emailLower === configuredEmail;
+    const isAuthorizedPass = doctorPasscode === configuredPass;
 
     if (isAuthorizedEmail && isAuthorizedPass) {
       onLogin('admin', false);
