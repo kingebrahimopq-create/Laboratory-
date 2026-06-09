@@ -477,7 +477,7 @@ export default function LoginPortal({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           {/* Windows Button */}
           <a
-            href="https://github.com/kingebrahimopq-create/Laboratory-/actions"
+            href="https://github.com/kingebrahimopq-create/Laboratory-/releases/tag/v1.0.0"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/5 p-3 rounded-2xl transition-all group duration-250 cursor-pointer"
@@ -487,13 +487,13 @@ export default function LoginPortal({
             </div>
             <div className="text-right">
               <div className="text-[11px] font-black text-white font-sans">تحميل للكمبيوتر (Windows)</div>
-              <div className="text-[9px] text-slate-405 font-sans">ملف تثبيت مكتبي (.EXE)</div>
+              <div className="text-[9px] text-slate-300 font-sans">ملف تثبيت مكتبي (.EXE)</div>
             </div>
           </a>
 
           {/* Android Button */}
           <a
-            href="https://github.com/kingebrahimopq-create/Laboratory-/actions"
+            href="https://github.com/kingebrahimopq-create/Laboratory-/releases/tag/v1.0.0"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/5 p-3 rounded-2xl transition-all group duration-250 cursor-pointer"
@@ -503,13 +503,13 @@ export default function LoginPortal({
             </div>
             <div className="text-right">
               <div className="text-[11px] font-black text-white font-sans">تحميل للهاتف (Android)</div>
-              <div className="text-[9px] text-slate-405 font-sans">ملف أندرويد مباشر (.APK)</div>
+              <div className="text-[9px] text-slate-300 font-sans">ملف أندرويد مباشر (.APK)</div>
             </div>
           </a>
         </div>
 
         <p className="text-[9.5px] leading-relaxed text-slate-400 text-center border-t border-white/5 pt-3">
-          💡 <b>نصيحة:</b> اضغط على التحميل، وسيتم توجيهك لعمليات البناء التلقائية في GitHub. اختر آخر بناء ناجح ثم انزل لقسم <b>Artifacts</b> لتحميل التطبيق مجانًا، أو تصفح <a href="https://github.com/kingebrahimopq-create/Laboratory-/releases" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline font-bold">قائمة الإصدارات (Releases)</a>.
+          💡 <b>نصيحة:</b> اضغط على التحميل، وسيتم توجيهك لصفحة تنزيل التطبيقات مباشرة دون الحاجة لحساب أو تسجيل دخول. اضغط على أحدث ملف مرفق لتنزيله فوراً، أو تصفح <a href="https://github.com/kingebrahimopq-create/Laboratory-/releases" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline font-bold">قائمة الإصدارات بالكامل (Releases)</a>.
         </p>
       </div>
 

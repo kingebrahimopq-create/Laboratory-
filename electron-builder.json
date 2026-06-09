@@ -10,6 +10,13 @@
     "package.json"
   ],
   "win": {
-    "target": "dir"
+    "target": "nsis"
+  },
+  "nsis": {
+    "oneClick": true,
+    "allowToChangeInstallationDirectory": false,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "My Lab LIMS"
   }
 }

@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -33,4 +36,21 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: MyLab-Windows-App
-        path: dist/**/*.exe
+        path: dist-electron/**/*.exe
+
+    - name: Create or Update GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: "v1.0.0"
+        name: "My Lab LIMS v1.0.0 (التطبيقات الطبية الجاهزة)"
+        body: |
+          مرحباً بك! هنا تجد أحدث البنايات التلقائية للتطبيقات الطبية بنسخ مخصصة للتحميل المباشر دون الحاجة لتسجيل الدخول:
+          
+          * 📱 **تطبيق الأندرويد (.apk):** متكامل ومحدث فورياً للعمل على الجوالات والأجهزة الكفية الكبيرة.
+          * 💻 **تطبيق الويندوز (.exe):** حزمة تثبيت بضغطة واحدة لأجهزة الحاسوب لسطح المكتب في الإستقبال والمختبر.
+        draft: false
+        prerelease: false
+        files: |
+          dist-electron/*.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -542,24 +542,24 @@ export default function App() {
                 <div className="space-y-2 pt-1">
                   {/* Windows Download Button */}
                   <a 
-                    href="https://github.com/kingebrahimopq-create/Laboratory-/actions"
+                    href="https://github.com/kingebrahimopq-create/Laboratory-/releases/tag/v1.0.0"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between bg-white/10 hover:bg-white/15 border border-white/5 p-2.5 rounded-xl transition-all group"
                   >
                     <div className="flex items-center gap-2">
-                      <Laptop className="w-4 h-4 text-teal-450 group-hover:scale-110 transition-transform" />
+                      <Laptop className="w-4 h-4 text-teal-400 group-hover:scale-110 transition-transform" />
                       <div className="text-right">
                         <div className="text-[10px] font-bold text-white">تطبيق الويندوز (Windows)</div>
-                        <div className="text-[8px] text-slate-405">ملف تثبيت مكتبي (.EXE)</div>
+                        <div className="text-[8px] text-slate-300">ملف تثبيت مكتبي (.EXE)</div>
                       </div>
                     </div>
-                    <span className="text-[9px] bg-teal-500/20 text-teal-305 px-2 py-0.5 rounded-full font-bold">تحميل</span>
+                    <span className="text-[9px] bg-teal-500/20 text-teal-300 px-2 py-0.5 rounded-full font-bold">تحميل ممتد</span>
                   </a>
 
                   {/* Android Download Button */}
                   <a 
-                    href="https://github.com/kingebrahimopq-create/Laboratory-/actions"
+                    href="https://github.com/kingebrahimopq-create/Laboratory-/releases/tag/v1.0.0"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between bg-white/10 hover:bg-white/15 border border-white/5 p-2.5 rounded-xl transition-all group"
@@ -568,22 +568,22 @@ export default function App() {
                       <Smartphone className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
                       <div className="text-right">
                         <div className="text-[10px] font-bold text-white">تطبيق الاندرويد (Android)</div>
-                        <div className="text-[8px] text-slate-405">حزمة تثبيت الجوال (.APK)</div>
+                        <div className="text-[8px] text-slate-300">حزمة تثبيت الجوال (.APK)</div>
                       </div>
                     </div>
-                    <span className="text-[9px] bg-emerald-500/20 text-emerald-305 px-2 py-0.5 rounded-full font-bold">تحميل</span>
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">تحميل فوري</span>
                   </a>
                 </div>
 
                 <div className="pt-2 border-t border-white/5 text-[9px] text-slate-400 text-center flex flex-col gap-1">
-                  <span>لأحدث البنايات، اضغط على تحميل ثم اختر الملف من قسم <b>Artifacts</b></span>
+                  <span>لتحميل أحدث تطبيق مباشر، اضغط على زر التحميل بالأعلى ثم اختر الملف المرفق لتنزيله فوراً.</span>
                   <a 
                     href="https://github.com/kingebrahimopq-create/Laboratory-/releases"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-teal-400 hover:underline font-bold"
                   >
-                    أو تصفح الإصدارات الجاهزة (Releases) 🚀
+                    أو تصفح وتنزيل كل الإصدارات الطبية الجاهزة (Releases) 🚀
                   </a>
                 </div>
               </div>
