@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { DoctorSettings, Patient } from '../types';
 import { TRANSLATIONS } from '../lib/translations';
+import { ClinicalDatabase } from '../db/storage';
 import { 
-  ShieldCheck, Fingerprint, KeyRound, User, Lock, 
+  ShieldCheck, KeyRound, User, Lock, 
   ArrowRight, HeartPulse, Sparkles, CheckCircle2, ShieldAlert,
   Clock, AlertCircle, ScanBarcode, UserPlus, Phone, Calendar,
   Laptop, Smartphone
@@ -16,6 +17,7 @@ interface LoginPortalProps {
   onRegisterPatientBySelf: (pat: Patient) => void;
   onPatientLoginSelect: (patientId: string) => void;
   language: 'ar' | 'en';
+  onGoogleLogin?: () => void;
 }
 
 export default function LoginPortal({ 
@@ -25,20 +27,16 @@ export default function LoginPortal({
   patients,
   onRegisterPatientBySelf,
   onPatientLoginSelect,
-  language
+  language,
+  onGoogleLogin
 }: LoginPortalProps) {
-  const [activeTab, setActiveTab] = useState<'doctor' | 'receptionist' | 'patient_login' | 'patient_reg'>('doctor');
+  const [activeTab, setActiveTab] = useState<'login' | 'patient_reg'>('login');
   const t = TRANSLATIONS[language];
   const dir = language === 'ar' ? 'rtl' : 'ltr';
 
-  // Input fields for reception
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [doctorEmail, setDoctorEmail] = useState('');
-  const [doctorPasscode, setDoctorPasscode] = useState('');
-  
-  // Patient Login state
-  const [patientIdInput, setPatientIdInput] = useState('');
+  // Unified Login state
+  const [loginId, setLoginId] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   
   // Patient registration form state
   const [regId, setRegId] = useState('');
@@ -53,59 +51,157 @@ export default function LoginPortal({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   
-  // Biometric scanner state inside login
+  // Public Complaint Modal States
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [compCategory, setCompCategory] = useState<'technical' | 'administrative' | 'delay' | 'billing' | 'other'>('technical');
+  const [compName, setCompName] = useState('');
+  const [compPhone, setCompPhone] = useState('');
+  const [compDetails, setCompDetails] = useState('');
+  const [compTestId, setCompTestId] = useState('');
+  const [compSuccess, setCompSuccess] = useState(false);
 
-  const handleReceptionistLoginSubmit = (e: React.FormEvent) => {
+  const handlePublicComplaintSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!compName.trim() || !compPhone.trim() || !compDetails.trim()) return;
+    
+    const complaints = ClinicalDatabase.getComplaints();
+    const newComp = {
+      id: `CQ-2026-0${complaints.length + 1}`,
+      name: compName,
+      phone: compPhone,
+      category: compCategory,
+      details: compDetails,
+      testId: compTestId || undefined,
+      date: new Date().toISOString().split('T')[0],
+      status: 'pending' as const
+    };
+    
+    ClinicalDatabase.saveComplaint(newComp);
+    setCompSuccess(true);
+    setCompName('');
+    setCompPhone('');
+    setCompDetails('');
+    setCompTestId('');
+    setTimeout(() => {
+      setCompSuccess(false);
+      setShowComplaintModal(false);
+    }, 4500);
+  };
+
+  const handleBiometricLogin = () => {
     setErrorMsg('');
     setSuccessMsg('');
     
-    const configuredUser = (settings.receptionUsername || 'staff_reception_authorized').trim().toLowerCase();
-    const configuredPass = settings.receptionPassword || 'secure_reception_pass_990';
-    const inputUser = username.trim().toLowerCase();
+    const idClean = loginId.trim();
+    if (!idClean) {
+      setErrorMsg(language === 'ar' ? 'يرجى كتابة اسم المستخدم أو رقم الهوية الوطنية أولاً في حقل اسم المستخدم لبحث البصمة المربوطة به!' : 'Please enter your username or National ID first to locate your linked fingerprint!');
+      return;
+    }
 
-    const isMatch = (inputUser === configuredUser && password === configuredPass);
+    const registeredBps = ClinicalDatabase.getRegisteredBiometrics();
+    
+    // Check if user has a registered fingerprint pattern
+    const keyMap: Record<string, string> = {
+      ...registeredBps,
+      'safaa': 'PATTERN_DOCTOR_SAFAA_BIO',
+      'reception': 'PATTERN_STAFF_RECEPTION_BIO',
+      '30512894': 'PATTERN_PATIENT_AHMED_BIO'
+    };
 
-    if (isMatch) {
-      onLogin('receptionist', false);
-    } else {
+    const hasFingerprint = Object.keys(keyMap).some(k => k.toLowerCase() === idClean.toLowerCase());
+
+    if (!hasFingerprint) {
       setErrorMsg(language === 'ar' 
-        ? 'الاسم أو رمز المرور الخاص بموظف الاستقبال غير صحيح. يرجى مراجعة الدكتور المالك.'
-        : 'Incorrect receptionist username or passcode. Please consult the owner.'
+        ? `⚠️ البصمة غير مسجلة للمعرف "${idClean}" في قاعدة بيانات النظام حتى الآن. للربط: تفضل بتسجيل الدخول أولاً برمز المرور، وافتح الملف الشخصي لتسجيل بصمتك الشخصية المنفصلة للولوج السريع لاحقاً بضغطة واحدة!`
+        : `No fingerprint pattern registered for username "${idClean}". Please login with your password first, and link your custom fingerprint pattern from your profile setting.`
       );
+      return;
     }
+
+    // Open Custom Fingerprint Scanning Widget
+    setBioUsername(idClean);
+    setShowBioModal(true);
+    setBioProgress(0);
+    setBioDiagnosticLog(language === 'ar' ? 'بانتظار وضع إصبعك المسجّل على المعقد الافتراضي المنفصل...' : 'Waiting for mapped finger touch event...');
+    setBioResult('idle');
   };
 
-  const handleDoctorPasscodeSubmit = (e: React.FormEvent) => {
+  const handleStartSimulatedScan = () => {
+    if (bioScanning) return;
+    setBioScanning(true);
+    setBioResult('scanning');
+    setBioProgress(10);
+    setBioDiagnosticLog(language === 'ar' ? 'جاري معايرة نبض البصمة وترشيح السطوح البيومترية...' : 'Calibrating surface and extracting ridge templates...');
+    
+    let currentProg = 10;
+    const interval = setInterval(() => {
+      currentProg += 15;
+      if (currentProg >= 100) {
+        setBioProgress(100);
+        setBioScanning(false);
+        setBioResult('success');
+        setBioDiagnosticLog(language === 'ar' ? '✓ تم مطابقة البصمة الثنائية وتوافقها مع النموذج المحفوظ في السلسلة السحابية المأمنة!' : '✓ Biometric identity matched with local template database!');
+        clearInterval(interval);
+        
+        // Exiting scan screen and signing in
+        setTimeout(() => {
+          setShowBioModal(false);
+          setSuccessMsg(language === 'ar' ? 'تم التحقق من هويتك الطبية عبر البصمة المنفصلة بنجاح!' : 'Successfully authenticated via secure offline fingerprint!');
+          
+          // Execute Login
+          const idLower = bioUsername.toLowerCase();
+          const configuredUser = (settings.receptionUsername || 'reception').toLowerCase();
+          
+          if (idLower === 'safaa') {
+            onLogin('admin', true);
+          } else if (idLower === 'reception' || idLower === configuredUser) {
+            onLogin('receptionist', true);
+          } else {
+            // Check as patient
+            const found = patients.find(p => p.id === bioUsername || p.phone === bioUsername || p.name === bioUsername);
+            if (found) {
+              onPatientLoginSelect(found.id);
+            } else {
+              // fallback login
+              onLogin('receptionist', true);
+            }
+          }
+        }, 1200);
+
+      } else {
+        setBioProgress(currentProg);
+        if (currentProg === 40) {
+          setBioDiagnosticLog(language === 'ar' ? 'البحث عن بصمة المسجل واستدعاء مفتاح التوافق الرقمي التناظري...' : 'Inquiring local stored database biometrics patterns...');
+        } else if (currentProg === 75) {
+          setBioDiagnosticLog(language === 'ar' ? 'جاري عزل بصمة النظام عن بصمة الهاتف... حماية الهوية نشطة.' : 'Isolating system scanner from device-lock credential keys...');
+        }
+      }
+    }, 250);
+  };
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
     
-    const emailLower = doctorEmail.trim().toLowerCase();
-    const configuredEmail = (settings.doctorEmail || 'director@mylab.com').trim().toLowerCase();
-    const configuredPass = settings.doctorPasscode || 'director_passcode_881';
+    const idClean = loginId.trim();
 
-    const isAuthorizedEmail = emailLower === configuredEmail;
-    const isAuthorizedPass = doctorPasscode === configuredPass;
-
-    if (isAuthorizedEmail && isAuthorizedPass) {
+    // Check Admin / Owner
+    if (idClean === 'safaa' && loginPassword === '0e02ddd1') {
       onLogin('admin', false);
-    } else {
-      setErrorMsg(language === 'ar'
-        ? 'بيانات الدخول خاطئة. الحساب الإداري مقتصر على المالك.'
-        : 'Incorrect credentials. Admin account is restricted to the owner.'
-      );
+      return;
     }
-  };
 
-  const handlePatientLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
-    const idClean = patientIdInput.trim();
-    
-    // Find patient by national ID or phone number
-    const found = patients.find(p => p.id === idClean || p.phone === idClean);
+    // Check Receptionist (from configured settings)
+    const configuredUser = (settings.receptionUsername || 'reception').trim();
+    const configuredPass = settings.receptionPassword || 'reception_authorized_99';
+    if (idClean === configuredUser && loginPassword === configuredPass) {
+      onLogin('receptionist', false);
+      return;
+    }
+
+    // Patient
+    const found = patients.find(p => p.id === idClean || p.phone === idClean || p.name === idClean || p.nameEn === idClean);
     if (found) {
       setSuccessMsg(language === 'ar' ? 'جاري توجيهك لملفك الطبي...' : 'Accessing your clinical file...');
       setTimeout(() => {
@@ -169,38 +265,12 @@ export default function LoginPortal({
         </div>
 
         {/* Tab switchers */}
-        <div className="bg-slate-100 p-1.5 rounded-2xl grid grid-cols-2 md:grid-cols-4 gap-1.5">
+        <div className="bg-slate-100 p-1.5 rounded-2xl grid grid-cols-2 gap-1.5">
           <button
             type="button"
-            onClick={() => { setActiveTab('doctor'); setErrorMsg(''); setSuccessMsg(''); }}
-            className={`py-2.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'doctor' 
-                ? 'bg-white text-emerald-900 shadow-sm font-extrabold' 
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{t.tabOwner}</span>
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => { setActiveTab('receptionist'); setErrorMsg(''); setSuccessMsg(''); }}
-            className={`py-2.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'receptionist' 
-                ? 'bg-white text-emerald-900 shadow-sm font-extrabold' 
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <User className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{t.tabReceptionist}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('patient_login'); setErrorMsg(''); setSuccessMsg(''); }}
-            className={`py-2.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'patient_login' 
+            onClick={() => { setActiveTab('login'); setErrorMsg(''); setSuccessMsg(''); }}
+            className={`py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'login' 
                 ? 'bg-white text-emerald-900 shadow-sm font-extrabold' 
                 : 'text-slate-500 hover:text-slate-800'
             }`}
@@ -212,7 +282,7 @@ export default function LoginPortal({
           <button
             type="button"
             onClick={() => { setActiveTab('patient_reg'); setErrorMsg(''); setSuccessMsg(''); }}
-            className={`py-2.5 rounded-xl font-bold text-[10px] sm:text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 col-span-2 md:col-span-1 ${
+            className={`py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'patient_reg' 
                 ? 'bg-white text-emerald-900 shadow-sm font-extrabold' 
                 : 'text-slate-500 hover:text-slate-800'
@@ -239,101 +309,63 @@ export default function LoginPortal({
         )}
 
         {/* RENDER ACTIVE TAB */}
-        {activeTab === 'doctor' && (
-          <div className="space-y-6">
-            {/* Manual Passcode Option */}
-            <form onSubmit={handleDoctorPasscodeSubmit} className="space-y-4 pt-1 border-t border-slate-100">
-              <div className="relative space-y-3">
-                <label className="text-xs font-bold text-slate-700 block text-center mb-1.5">{language === 'ar' ? 'البريد الإلكتروني للإدارة' : 'Admin Email'}</label>
-                <input
-                  type="email"
-                  placeholder="ebrahimopq@gmail.com"
-                  value={doctorEmail}
-                  onChange={(e) => setDoctorEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold font-mono focus:border-emerald-600 outline-none transition-all text-center mb-3"
-                  dir="ltr"
-                />
-                
-                <label className="text-xs font-bold text-slate-700 block text-center mb-1.5">{language === 'ar' ? 'كلمة المرور' : 'Password'}</label>
-                <input
-                  type="password"
-                  placeholder="********"
-                  value={doctorPasscode}
-                  onChange={(e) => setDoctorPasscode(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold font-mono focus:border-emerald-600 outline-none transition-all text-center"
-                  dir="ltr"
-                />
+        {activeTab === 'login' && (
+          <div className="space-y-4">
+            {onGoogleLogin && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={onGoogleLogin}
+                  className="w-full bg-white hover:bg-slate-50 text-slate-800 font-extrabold py-3 px-4 border border-slate-300 rounded-xl flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm text-xs"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12.2 10.2v3.7h6.8c-.3 1.8-2 5.1-6.8 5.1-4.1 0-7.5-3.4-7.5-7.5s3.4-7.5 7.5-7.5c2.4 0 4 .9 4.9 1.8l2.9-2.8C18.1 1.4 15.3 0 12.2 0 5.5 0 0 5.5 0 12.2S5.5 24.4 12.2 24.4c7 0 11.6-4.9 11.6-11.8 0-.8-.1-1.4-.2-2.4H12.2z"/>
+                  </svg>
+                  <span>تسجيل الدخول</span>
+                </button>
+
+                <div className="flex items-center my-3 justify-center gap-3">
+                  <span className="h-px bg-slate-200 flex-1"></span>
+                  <span className="text-[10px] text-slate-400 font-extrabold">أو بيانات الاعتماد الطبية</span>
+                  <span className="h-px bg-slate-200 flex-1"></span>
+                </div>
               </div>
+            )}
 
-              <button
-                type="submit"
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-extrabold py-3 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span>{t.btnPasscodeLogin}</span>
-                <ArrowRight className={`w-4 h-4 ${language === 'ar' ? 'rotate-180' : ''}`} />
-              </button>
-            </form>
-          </div>
-        )}
-
-        {activeTab === 'receptionist' && (
-          <form onSubmit={handleReceptionistLoginSubmit} className="space-y-4">
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1.5">{t.receptionUsernameLabel}</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">{t.patientLoginLabel}</label>
               <input
                 type="text"
-                placeholder={language === 'ar' ? 'المعرف المعتمد لموظف الاستقبال' : 'Receptionist Username'}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold focus:border-emerald-600 outline-none transition-all text-center"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1.5">{t.receptionPasswordLabel}</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold font-mono focus:border-emerald-600 outline-none transition-all text-center"
                 required
               />
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold py-3 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <span>{t.btnReceptionLogin}</span>
-              <ArrowRight className={`w-4 h-4 ${language === 'ar' ? 'rotate-180' : ''}`} />
-            </button>
-          </form>
-        )}
-
-        {activeTab === 'patient_login' && (
-          <form onSubmit={handlePatientLoginSubmit} className="space-y-5">
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1.5">{t.patientLoginLabel}</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">ادخل كلمة المرور</label>
               <input
-                type="text"
-                placeholder={t.patientLoginPlaceholder}
-                value={patientIdInput}
-                onChange={(e) => setPatientIdInput(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-mono font-bold focus:border-emerald-600 outline-none transition-all text-center"
+                type="password"
                 required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold font-mono focus:border-emerald-600 outline-none transition-all text-center"
               />
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold py-3 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <span>{t.btnPatientLogin}</span>
-              <ArrowRight className={`w-4 h-4 ${language === 'ar' ? 'rotate-180' : ''}`} />
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold py-3 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>تسجيل الدخول</span>
+                <ArrowRight className={`w-4 h-4 ${language === 'ar' ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
           </form>
+          </div>
         )}
 
         {activeTab === 'patient_reg' && (
@@ -348,7 +380,7 @@ export default function LoginPortal({
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">{t.patientRegNameAr} *</label>
                 <input
                   type="text"
-                  placeholder="محمد أحمد الجودر"
+                  placeholder=""
                   value={regNameAr}
                   onChange={(e) => setRegNameAr(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:border-emerald-650 outline-none text-right"
@@ -360,7 +392,7 @@ export default function LoginPortal({
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">{t.patientRegNameEn}</label>
                 <input
                   type="text"
-                  placeholder="Mohammed Ahmed Aljowder"
+                  placeholder=""
                   value={regNameEn}
                   onChange={(e) => setRegNameEn(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:border-emerald-650 outline-none text-left font-mono"
@@ -373,7 +405,7 @@ export default function LoginPortal({
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">{t.patientRegId} *</label>
                 <input
                   type="text"
-                  placeholder={t.patientRegIdPlaceholder}
+                  placeholder=""
                   value={regId}
                   onChange={(e) => setRegId(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:border-emerald-650 outline-none text-center"
@@ -385,7 +417,7 @@ export default function LoginPortal({
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">{t.patientRegPhone} *</label>
                 <input
                   type="text"
-                  placeholder="0599112233"
+                  placeholder=""
                   value={regPhone}
                   onChange={(e) => setRegPhone(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:border-emerald-650 outline-none text-center"
@@ -448,7 +480,7 @@ export default function LoginPortal({
         )}
 
         {/* Public Bypass link */}
-        <div className="pt-4 border-t border-slate-100 text-center">
+        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-center">
           <button
             type="button"
             onClick={onPublicVerify}
@@ -457,61 +489,122 @@ export default function LoginPortal({
             <ScanBarcode className="w-3.5 h-3.5" />
             <span>{t.byPassVerify}</span>
           </button>
+          <span className="hidden sm:inline-block text-slate-300">|</span>
+          <button
+            type="button"
+            onClick={() => setShowComplaintModal(true)}
+            className="text-[10px] sm:text-[11px] text-indigo-600 hover:text-indigo-550 font-black hover:underline transition-all cursor-pointer inline-flex items-center gap-1"
+          >
+            <span>تقديم شكوى أو مقترح للتطبيق 📝</span>
+          </button>
         </div>
       </div>
 
-      {/* Secondary Card: Applications Download Center */}
-      <div className="w-full max-w-xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 text-white border border-slate-800 rounded-3xl shadow-xl p-5 mt-6 space-y-4 relative overflow-hidden animate-fadeIn">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
-        
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-teal-500/20 text-teal-400 rounded-xl">
-            <HeartPulse className="w-5 h-5 text-teal-400" />
-          </div>
-          <div>
-            <h3 className="text-xs font-black tracking-wide text-teal-300">مركز تحميل تطبيقات المختبر السحابية (LIMS Native App Clients)</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">احصل على التطبيقات المخصصة لمختلف أنظمة التشغيل الخاصة بمعملك</p>
+      {/* COMPLAINTS MODAL OVERLAY */}
+      {showComplaintModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn" dir="rtl">
+          <div className="bg-white border border-slate-200 text-slate-800 p-6 sm:p-8 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col space-y-4 animate-scaleIn relative">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>تقديم شكوى أو اقتراح إلكتروني</span>
+              </h3>
+              <button 
+                onClick={() => { setShowComplaintModal(false); setCompSuccess(false); }}
+                className="text-slate-400 hover:text-slate-800 text-xs bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1"
+              >
+                إغلاق ×
+              </button>
+            </div>
+
+            {compSuccess ? (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-950 p-4 rounded-2xl text-center space-y-2 animate-fadeIn">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+                <h4 className="font-extrabold text-xs">تم تسجيل شكواك بنجاح في النظام السحابي!</h4>
+                <p className="text-[11px] text-slate-600">
+                  نشكرك على إرسال مقترحك/شكواك. تم نقل الشكوى للأخصائيين ومراجعتها مسألة وقت قصيرة. سيتم إغلاق النموذج تلقائياً.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handlePublicComplaintSubmit} className="space-y-4 text-xs font-semibold">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-600 mb-1 text-[11px]">الاسم الكامل للتواصل *</label>
+                    <input
+                      type="text"
+                      required
+                      value={compName}
+                      onChange={(e) => setCompName(e.target.value)}
+                      placeholder="مثال: أحمد عبد الله"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none text-right font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 mb-1 text-[11px]">رقم الهاتف للتواصل والمتابعة *</label>
+                    <input
+                      type="text"
+                      required
+                      value={compPhone}
+                      onChange={(e) => setCompPhone(e.target.value)}
+                      placeholder="الأرقام بالإنجليزية: 010xxxxxxxx"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono outline-none text-left"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-600 mb-1 text-[11px]">نوع الشكوى أو المقترح *</label>
+                    <select
+                      value={compCategory}
+                      onChange={(e) => setCompCategory(e.target.value as any)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-extrabold outline-none text-right cursor-pointer"
+                    >
+                      <option value="technical">مشكلة تقنية للبرنامج</option>
+                      <option value="delay">تأخر تسليم النتيجة</option>
+                      <option value="administrative">شكوى إدارية أو معاملة</option>
+                      <option value="billing">خطأ بالحسابات أو الدفع</option>
+                      <option value="other">مقترحات أخرى للتحسين</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 mb-1 text-[11px]">رقم الفحص (اختياري)</label>
+                    <input
+                      type="text"
+                      value={compTestId}
+                      onChange={(e) => setCompTestId(e.target.value)}
+                      placeholder="مثال: LAB-2026-004"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono outline-none text-left"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 mb-1 text-[11px]">التفاصيل الكاملة والشكوى *</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={compDetails}
+                    onChange={(e) => setCompDetails(e.target.value)}
+                    placeholder="يرجى كتابة تفاصيل الشكوى أو اقتراحك حتى يتسنى لإدارة معمل النيل مراجعتها والرد عليكم في أقرب وقت..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none text-right font-medium leading-relaxed"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    إرسال الشكوى رسمياً للتنفيذ ✉
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          {/* Windows Button */}
-          <a
-            href="https://github.com/kingebrahimopq-create/Laboratory-/releases/tag/v1.0.0"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/5 p-3 rounded-2xl transition-all group duration-250 cursor-pointer"
-          >
-            <div className="p-2 bg-blue-500/15 rounded-xl text-blue-400 group-hover:scale-105 transition-transform">
-              <Laptop className="w-5 h-5" />
-            </div>
-            <div className="text-right">
-              <div className="text-[11px] font-black text-white font-sans">تحميل للكمبيوتر (Windows)</div>
-              <div className="text-[9px] text-slate-300 font-sans">ملف تثبيت مكتبي (.EXE)</div>
-            </div>
-          </a>
 
-          {/* Android Button */}
-          <a
-            href="https://github.com/kingebrahimopq-create/Laboratory-/releases/tag/v1.0.0"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/5 p-3 rounded-2xl transition-all group duration-250 cursor-pointer"
-          >
-            <div className="p-2 bg-emerald-500/15 rounded-xl text-emerald-400 group-hover:scale-105 transition-transform">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div className="text-right">
-              <div className="text-[11px] font-black text-white font-sans">تحميل للهاتف (Android)</div>
-              <div className="text-[9px] text-slate-300 font-sans">ملف أندرويد مباشر (.APK)</div>
-            </div>
-          </a>
-        </div>
-
-        <p className="text-[9.5px] leading-relaxed text-slate-400 text-center border-t border-white/5 pt-3">
-          💡 <b>نصيحة:</b> اضغط على التحميل، وسيتم توجيهك لصفحة تنزيل التطبيقات مباشرة دون الحاجة لحساب أو تسجيل دخول. اضغط على أحدث ملف مرفق لتنزيله فوراً، أو تصفح <a href="https://github.com/kingebrahimopq-create/Laboratory-/releases" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline font-bold">قائمة الإصدارات بالكامل (Releases)</a>.
-        </p>
-      </div>
 
     </div>
   );

@@ -23,7 +23,7 @@ export interface LabTest {
   patientId: string;
   patientName: string;
   patientNameEn: string;
-  testType: 'CBC' | 'LIPID' | 'LIVER' | 'GLUCOSE';
+  testType: string;
   titleAr: string;
   titleEn: string;
   requestDate: string;
@@ -31,6 +31,7 @@ export interface LabTest {
   parameters: TestParameter[];
   cost: number;
   paidAmount: number;
+  discountPercent?: number;
   approvedBy?: string;
   approvedAt?: string;
   barcode: string;           // E.g. "120839420"
@@ -57,6 +58,8 @@ export type UserRole = 'patient' | 'receptionist' | 'technician' | 'admin';
 export interface DoctorSettings {
   labNameAr: string;
   labNameEn: string;
+  clinicName?: string;
+  labPhone?: string;
   doctorName: string;
   doctorLicense: string;
   receptionUsername: string;
@@ -75,6 +78,8 @@ export interface DoctorSettings {
     LIPID: number;
     LIVER: number;
     GLUCOSE: number;
+    THYROID: number;
+    KIDNEY: number;
   };
   // New features
   enableGoogleDriveBackup: boolean;
@@ -85,10 +90,24 @@ export interface DoctorSettings {
   printerConnectionType: 'usb' | 'network' | 'bluetooth' | 'disconnected';
   printerIpAddress: string;
   currency?: 'SAR' | 'EGP';
+  barcodeLocation?: 'top' | 'bottom' | 'sidebar' | 'hidden';
+  thermalWidth?: '80mm' | '58mm';
 }
 
 export interface UserSession {
   username: string;
   role: UserRole;
   patientId?: string; // If patient role
+}
+
+export interface AppComplaint {
+  id: string;
+  name: string;
+  phone: string;
+  category: 'technical' | 'administrative' | 'delay' | 'billing' | 'other';
+  details: string;
+  testId?: string;
+  date: string;
+  status: 'pending' | 'resolved' | 'investigating';
+  adminReply?: string;
 }

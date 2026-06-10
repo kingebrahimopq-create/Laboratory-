@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Patient, LabTest, Appointment } from '../types';
+import { Patient, LabTest, Appointment, AppComplaint } from '../types';
 import { TRANSLATIONS } from '../lib/translations';
 import { GLUCOSE_HISTORICAL_TREND } from '../data';
 import { 
   User, Phone, CalendarCheck2, Clock, History, FileHeart, 
   MapPin, HelpCircle, LogOut, CheckCircle2, ChevronLeft, 
-  TrendingUp, Activity, ClipboardList, PlusCircle, Compass, Check
+  TrendingUp, Activity, ClipboardList, PlusCircle, Compass, Check, AlertTriangle, ShieldQuestion
 } from 'lucide-react';
 import InteractiveMap from './InteractiveMap';
 
@@ -13,24 +13,28 @@ interface PatientPortalProps {
   currentPatient: Patient;
   tests: LabTest[];
   appointments: Appointment[];
+  complaints?: AppComplaint[];
+  onSubmitComplaint?: (complaint: Omit<AppComplaint, 'id' | 'date' | 'status'>) => void;
+  language: 'ar' | 'en';
+  currency: 'SAR' | 'EGP';
   onLogout: () => void;
   onSelectTest: (test: LabTest) => void;
   onBookAppointment: (appointment: Omit<Appointment, 'id'>) => void;
-  language: 'ar' | 'en';
-  currency: 'SAR' | 'EGP';
 }
 
 export default function PatientPortal({ 
   currentPatient, 
   tests, 
   appointments, 
-  onLogout, 
-  onSelectTest,
-  onBookAppointment,
+  complaints = [],
+  onSubmitComplaint,
   language,
-  currency
+  currency,
+  onLogout,
+  onSelectTest,
+  onBookAppointment
 }: PatientPortalProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tests' | 'booking'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tests' | 'booking' | 'complaints'>('dashboard');
   const t = TRANSLATIONS[language];
   const isAr = language === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
@@ -42,6 +46,32 @@ export default function PatientPortal({
   const [bookingTest, setBookingTest] = useState('صورة دم كاملة (CBC)');
   const [bookingNotes, setBookingNotes] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
+
+  // Complaints form states
+  const [complaintCategory, setComplaintCategory] = useState<'technical' | 'administrative' | 'delay' | 'billing' | 'other'>('technical');
+  const [complaintDetails, setComplaintDetails] = useState('');
+  const [complaintTestId, setComplaintTestId] = useState('');
+  const [complaintSuccess, setComplaintSuccess] = useState(false);
+
+  const handleComplaintSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!complaintDetails.trim()) return;
+    if (onSubmitComplaint) {
+      onSubmitComplaint({
+        name: currentPatient.name,
+        phone: currentPatient.phone,
+        category: complaintCategory,
+        details: complaintDetails,
+        testId: complaintTestId || undefined
+      });
+    }
+    setComplaintSuccess(true);
+    setComplaintDetails('');
+    setComplaintTestId('');
+    setTimeout(() => {
+      setComplaintSuccess(false);
+    }, 5000);
+  };
 
   // Map / Geolocation State
   const [gpsLat, setGpsLat] = useState<number | null>(null);
@@ -59,11 +89,44 @@ export default function PatientPortal({
   // Filter patient tests and appointments
   const patientTests = tests.filter(t => t.patientId === currentPatient.id);
   const patientAppointments = appointments.filter(a => a.patientPhone === currentPatient.phone);
+  const patientComplaints = complaints.filter(c => c.phone === currentPatient.phone || c.name === currentPatient.name);
+
+  const notificationsList = [
+    // Approved tests
+    ...patientTests.filter(t => t.sampleStatus === 'approved').map(t => ({
+      id: `notif-test-${t.id}`,
+      title: isAr ? '✓ جاهزية نتائج التحليل فورا' : '✓ Laboratory Results Ready',
+      desc: isAr 
+        ? `تم اعتماد واعتماد فحص "${t.titleAr || t.testType}" وتوثيقه رقمياً بالباركود والختم.`
+        : `Your analysis for "${t.testType}" has been approved and digitally certified.`,
+      date: t.approvedAt || t.requestDate || '2026-06-10',
+      type: 'success'
+    })),
+    // Booked/Confirmed appointments
+    ...patientAppointments.map(a => ({
+      id: `notif-apt-${a.id}`,
+      title: isAr ? '📅 تحديث حالة موعد المختبر' : '📅 Lab Appointment Update',
+      desc: isAr
+        ? `حالة موعدك الطبي بتاريخ ${a.date} في تمام الساعة ${a.time} هي الآن: \`${a.status === 'confirmed' ? 'مؤكد ومحجوز' : 'قيد الانتظار'}\`.`
+        : `Your appointment on ${a.date} at ${a.time} is now: \`${a.status}\`.`,
+      date: a.date,
+      type: a.status === 'confirmed' ? 'info' : 'warning'
+    })),
+    // Replied/Resolved complaints
+    ...patientComplaints.filter(c => c.status !== 'pending').map(c => ({
+      id: `notif-comp-${c.id}`,
+      title: isAr ? '💬 الرد على شكوى أو استفسار' : '💬 Response to Your Complaint',
+      desc: isAr
+        ? `تم الرد على ملاحظتك رقم ${c.id}: "${c.adminReply || 'جاري إنهاء المعالجة والتحقق الإداري.'}"`
+        : `Management replied to complaint #${c.id}: "${c.adminReply}"`,
+      date: c.date,
+      type: 'alert'
+    }))
+  ];
 
   const formatPrice = (sarPrice: number) => {
-    const coeff = currency === 'EGP' ? 13 : 1;
     const symbol = currency === 'EGP' ? (isAr ? 'ج.م' : 'EGP') : (isAr ? 'ر.س' : 'SAR');
-    return `${Math.round(sarPrice * coeff)} ${symbol}`;
+    return `${sarPrice} ${symbol}`;
   };
 
   const handleBookingSubmit = (e: React.FormEvent) => {
@@ -269,11 +332,100 @@ export default function PatientPortal({
           <span>{t.tabBookApt}</span>
           {activeTab === 'booking' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600 rounded-full" />}
         </button>
+        <button
+          onClick={() => setActiveTab('complaints')}
+          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'complaints' ? 'text-teal-600' : 'text-slate-500 hover:text-slate-800'
+          }`}
+          id="tab-patient-complaints"
+        >
+          <span>الشكاوى والمقترحات 📝</span>
+          {activeTab === 'complaints' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600 rounded-full" />}
+        </button>
       </div>
 
       {/* TAB CONTENT: DASHBOARD */}
       {activeTab === 'dashboard' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          
+          {/* INSTANT NOTIFICATION ALERT CENTER (التنبيهات الفورية النشطة) */}
+          <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-transparent border border-teal-500/20 rounded-2xl p-5 shadow-sm animate-fadeIn">
+            <div className="flex items-center justify-between mb-4 border-b border-teal-500/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
+                  <div className="relative p-2 bg-red-500 text-white rounded-full">
+                    <Activity className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">بوابة التنبيهات العاجلة والفورية للمريض</h3>
+                  <p className="text-[11px] font-bold text-teal-800">تحديثات وتنبيهات مباشرة تصدر تلقائياً عبر الأنظمة الطبية</p>
+                </div>
+              </div>
+              <span className="text-xs font-black bg-red-100 text-red-800 px-2.5 py-1 rounded-full border border-red-200">
+                {notificationsList.length} تنبيهات نشطة
+              </span>
+            </div>
+
+            {notificationsList.length === 0 ? (
+              <div className="text-center py-4 bg-white/50 rounded-xl border border-dashed border-slate-200">
+                <p className="text-xs text-slate-400 font-extrabold">لا يوجد أي خطابات أو تنبيهات غير مقروءة حالياً في ملفك.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {notificationsList.map((notif) => (
+                  <div 
+                    key={notif.id}
+                    className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-teal-500/35 hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] bg-teal-50 text-teal-800 font-extrabold px-2 py-0.5 rounded-md border border-teal-150">
+                          {notif.title}
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-mono font-bold">{notif.date}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 font-bold leading-relaxed">{notif.desc}</p>
+                    </div>
+
+                    <div className="mt-3.5 pt-2.5 border-t border-slate-50 flex justify-end">
+                      {notif.id.startsWith('notif-test-') && (
+                        <button
+                          onClick={() => {
+                            const testId = notif.id.replace('notif-test-', '');
+                            const testObj = tests.find(t => t.id === testId);
+                            if (testObj) onSelectTest(testObj);
+                          }}
+                          className="text-[10px] text-teal-600 hover:text-white font-extrabold bg-teal-50 hover:bg-teal-600 border border-teal-200 hover:border-teal-600 px-3 py-1 rounded-lg transition-all cursor-pointer"
+                        >
+                          فتح التقرير المخبري المعاينة 🖨️
+                        </button>
+                      )}
+                      {notif.id.startsWith('notif-apt-') && (
+                        <button
+                          onClick={() => setActiveTab('booking')}
+                          className="text-[10px] text-blue-600 hover:text-white font-extrabold bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 px-3 py-1 rounded-lg transition-all cursor-pointer"
+                        >
+                          إدارة جدول المواعيد 📅
+                        </button>
+                      )}
+                      {notif.id.startsWith('notif-comp-') && (
+                        <button
+                          onClick={() => setActiveTab('complaints')}
+                          className="text-[10px] text-slate-600 hover:text-white font-extrabold bg-slate-50 hover:bg-slate-600 border border-slate-200 hover:border-slate-600 px-3 py-1 rounded-lg transition-all cursor-pointer"
+                        >
+                          عرض الشكاوى ومراجعة الردود 💬
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* EMR Curve Trend */}
           <div className="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-slate-100 shadow-sm animate-fadeIn">
@@ -403,6 +555,7 @@ export default function PatientPortal({
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* TAB CONTENT: TEST REPORTS LIST */}
@@ -532,12 +685,12 @@ export default function PatientPortal({
                     }}
                     className={`p-4 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
                       bookingType === 'home' 
-                        ? 'bg-indigo-550 border-indigo-700 text-indigo-950 shadow-sm font-extrabold' 
+                        ? 'bg-indigo-55 bg-indigo-50 border-indigo-500 text-indigo-900 shadow-sm font-extrabold' 
                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                     id="btn-booking-home"
                   >
-                    <span>{t.atHome} (+{formatPrice(50)})</span>
+                    <span>{t.atHome} ({isAr ? 'تكلفة الانتقال يحددها الطبيب المعالج لاحقاً' : 'Transit fee is decided by treating physician'})</span>
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-2">
@@ -584,11 +737,13 @@ export default function PatientPortal({
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">{t.bookingComments}</label>
-                <textarea
+                <input
+                  type="text"
+                  required
                   value={bookingNotes}
                   onChange={(e) => setBookingNotes(e.target.value)}
                   placeholder={t.bookingPlaceholder}
-                  className="w-full text-right bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-teal-500 outline-none transition-all h-24 duration-150"
+                  className="w-full text-right bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-teal-500 outline-none transition-all duration-150"
                   id="booking-notes"
                 />
               </div>
@@ -604,6 +759,139 @@ export default function PatientPortal({
               </div>
             </form>
           )}
+        </div>
+      )}
+
+      {/* TAB CONTENT: COMPLAINTS & SUGGESTIONS */}
+      {activeTab === 'complaints' && (
+        <div className="bg-white rounded-2xl p-5 sm:p-8 border border-slate-100 shadow-sm text-sm animate-fadeIn">
+          <div className="flex items-center gap-2 mb-6 pb-2 border-b border-slate-100">
+            <ShieldQuestion className="w-5 h-5 text-teal-600" />
+            <h3 className="text-base font-black text-slate-800">مركز تقديم الشكاوى والاقتراحات</h3>
+          </div>
+
+          <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">
+            نحن في معمل النيل نسعى لتقديم أعلى معايير الجودة والدقة. إذا كان لديك أي شكوى أو مقترح فيما يخص التحاليل، السرعة، المعاملة أو نظام التطبيق، يرجى ملء النموذج أدناه وسيتابع فريق الجودة والإدارة الطبية طلبك مباشرة.
+          </p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            {/* Form Column */}
+            <form onSubmit={handleComplaintSubmit} className="lg:col-span-3 space-y-4" id="complaint-form">
+              {complaintSuccess ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-emerald-950 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-extrabold text-xs">تم تسجيل الشكوى/المقترح بنجاح!</h4>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      تم إصدار رقم مرجعي تلقائي للشكوى لمتابعتها مع الإدارة الطبية. نشكرك لمساعدتنا على تقديم خدمة أفضل.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-650 mb-1.5">نوع الشكوى / المقترح:</label>
+                <select
+                  value={complaintCategory}
+                  onChange={(e) => setComplaintCategory(e.target.value as any)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-extrabold outline-none text-right cursor-pointer focus:border-teal-500 transition-all"
+                >
+                  <option value="technical">مشكلة تقنية داخل التطبيق أو الموقع (Technical)</option>
+                  <option value="delay">تأخر في ظهور أو تسليم نتيجة الفحص (Result Delay)</option>
+                  <option value="administrative">شكوى إدارية أو معاملة الموظفين (Administrative)</option>
+                  <option value="billing">خطأ في الحسابات أو عملية الدفع (Billing)</option>
+                  <option value="other">مقترحات أخرى للتطوير والتحسين (General Suggestion)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-650 mb-1.5">الرقم المرجعي للفحص (اختياري):</label>
+                <input
+                  type="text"
+                  placeholder="مثال: LAB-2026-001"
+                  value={complaintTestId}
+                  onChange={(e) => setComplaintTestId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-mono outline-none text-left"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">يساعدنا في ربط شكواك بالبيانات الطبية لسرعة الفحص والتدقيق الإكلينيكي.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-650 mb-1.5">تفاصيل الشكوى أو المقترح بالتفصيل:</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="اكتب هنا تفاصيل الشكوى أو اقتراحك للتطبيق أو جودة الفحص والتحاليل..."
+                  value={complaintDetails}
+                  onChange={(e) => setComplaintDetails(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs outline-none text-right focus:border-teal-500 transition-all leading-relaxed"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold px-6 py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <span>إرسال الشكوى للمراجعة الطبية ✉</span>
+                </button>
+              </div>
+            </form>
+
+            {/* List Column */}
+            <div className="lg:col-span-2 space-y-4">
+              <h4 className="font-extrabold text-xs text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-1.5">
+                <span>سجل شكواك النشطة ومتابعة الإدارة</span>
+                <span className="bg-indigo-50 text-indigo-800 text-[9px] px-2 py-0.5 rounded-full font-bold">
+                  {complaints.filter(c => c.phone === currentPatient.phone).length} شكاوى
+                </span>
+              </h4>
+
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                {complaints.filter(c => c.phone === currentPatient.phone).length === 0 ? (
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center text-slate-400 text-xs py-10">
+                    لا توجد شكاوى مسجلة مسبقاً لهذا الملف الهاتفي.
+                  </div>
+                ) : (
+                  complaints
+                    .filter(c => c.phone === currentPatient.phone)
+                    .map((c) => (
+                      <div key={c.id} className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] text-slate-400">{c.id}</span>
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
+                            c.status === 'resolved' 
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
+                              : c.status === 'investigating'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-100'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {c.status === 'resolved' ? 'تم الحل والرد ✓' : c.status === 'investigating' ? 'قيد المتابعة والتحقيق ⚖' : 'قيد الانتظار ⏳'}
+                          </span>
+                        </div>
+
+                        <div className="text-slate-500 text-[10px] font-bold">
+                          الفئة: {c.category === 'technical' ? 'مشكلة تقنية للبرنامج' : c.category === 'delay' ? 'تأخر تسليم النتيجة' : c.category === 'billing' ? 'مشكلة مالية/دفع' : 'أخرى'}
+                        </div>
+
+                        <p className="text-slate-800 font-medium leading-relaxed">
+                          {c.details}
+                        </p>
+
+                        {c.adminReply ? (
+                          <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-2.5 mt-2 text-[11px] text-indigo-950">
+                            <span className="font-extrabold text-indigo-800 block text-[10px] mb-1">رد الإدارة الطبية للـ مختبرات:</span>
+                            <p className="font-medium">{c.adminReply}</p>
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400 italic">بانتظار رد الإدارة ومسؤول المعمل.</div>
+                        )}
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

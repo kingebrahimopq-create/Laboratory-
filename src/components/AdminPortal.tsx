@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { LabTest, Patient, TestParameter, DoctorSettings } from '../types';
+import { LabTest, Patient, TestParameter, DoctorSettings, AppComplaint, InventoryItem } from '../types';
+import { ClinicalDatabase } from '../db/storage';
 import { GLUCOSE_HISTORICAL_TREND } from '../data';
 import { 
   BarChart3, BadgeAlert, CheckCircle2, ShieldCheck, 
-  Sparkles, FileText, Check, Settings2, ShieldQuestion,
+  Sparkles, FileText, Check, Settings2, ShieldQuestion, MessageSquare,
   Users2, AlertTriangle, Coins, TrendingUp, Calendar, HeartPulse, Lock, Shield, Cpu, Sliders,
-  Printer, Database, Cloud, Copy
+  Printer, Database, Cloud, Copy, Plus, Minus, Trash2, Search, Package, RefreshCw
 } from 'lucide-react';
 
 interface AdminPortalProps {
   tests: LabTest[];
   patients: Patient[];
+  complaints?: AppComplaint[];
+  onReplyComplaint?: (id: string, reply: string, status: 'resolved' | 'investigating') => void;
   onApproveTest: (id: string, doctorName: string) => void;
   onModifyReferenceCost: (testType: 'CBC' | 'LIPID' | 'LIVER' | 'GLUCOSE', minNormal: number, maxNormal: number) => void;
   settings: DoctorSettings;
@@ -22,6 +25,8 @@ interface AdminPortalProps {
 export default function AdminPortal({
   tests,
   patients,
+  complaints = [],
+  onReplyComplaint,
   onApproveTest,
   onModifyReferenceCost,
   settings,
@@ -29,7 +34,7 @@ export default function AdminPortal({
   language,
   currency
 }: AdminPortalProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'metrics' | 'settings'>('approvals');
+  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'metrics' | 'settings' | 'notifications' | 'complaints'>('approvals');
   
   // Selection details
   const [reviewingTest, setReviewingTest] = useState<LabTest | null>(null);
@@ -40,6 +45,11 @@ export default function AdminPortal({
   const [settingMin, setSettingMin] = useState(12.0);
   const [settingMax, setSettingMax] = useState(17.5);
   const [settingSuccess, setSettingSuccess] = useState(false);
+
+  // Complaints Admin State
+  const [selectedComplaint, setSelectedComplaint] = useState<AppComplaint | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyStatus, setReplyStatus] = useState<'resolved' | 'investigating'>('resolved');
 
   // Database Integrity & Lifetime License Diagnostic states
   const [dbChecking, setDbChecking] = useState(false);
@@ -113,9 +123,8 @@ export default function AdminPortal({
   const totalCollectedRevenues = tests.reduce((sum, t) => sum + (t.paidAmount || 0), 0);
 
   const formatPrice = (sarPrice: number) => {
-    const coeff = currency === 'EGP' ? 13 : 1;
     const symbol = currency === 'EGP' ? (language === 'ar' ? 'ج.م' : 'EGP') : (language === 'ar' ? 'ر.س' : 'SAR');
-    return `${Math.round(sarPrice * coeff)} ${symbol}`;
+    return `${sarPrice} ${symbol}`;
   };
   const totalApproved = tests.filter(t => t.sampleStatus === 'approved').length;
   const totalPending = tests.filter(t => t.sampleStatus === 'analyzed' || t.sampleStatus === 'collected').length;
@@ -250,10 +259,10 @@ export default function AdminPortal({
       </div>
 
       {/* Mini Controls Area */}
-      <div className="flex gap-2 border-b border-slate-200 pb-px">
+      <div className="flex gap-2 border-b border-slate-200 pb-px overflow-x-auto flex-nowrap md:flex-wrap whitespace-nowrap md:whitespace-normal scrollbar-none">
         <button
           onClick={() => setActiveSubTab('approvals')}
-          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer ${
+          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'approvals' ? 'text-teal-600 font-extrabold' : 'text-slate-500 hover:text-slate-800'
           }`}
           id="btn-admin-tab-approvals"
@@ -263,7 +272,7 @@ export default function AdminPortal({
         </button>
         <button
           onClick={() => setActiveSubTab('metrics')}
-          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer ${
+          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer shrink-0 whitespace-nowrap ${
             activeSubTab === 'metrics' ? 'text-teal-600 font-extrabold' : 'text-slate-500 hover:text-slate-800'
           }`}
           id="btn-admin-tab-metrics"
@@ -272,13 +281,31 @@ export default function AdminPortal({
           {activeSubTab === 'metrics' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600 rounded-full" />}
         </button>
         <button
+          onClick={() => setActiveSubTab('notifications')}
+          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+            activeSubTab === 'notifications' ? 'text-teal-600 font-extrabold' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>إشعارات SMS/WhatsApp</span>
+          {activeSubTab === 'notifications' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600 rounded-full" />}
+        </button>
+        <button
+          onClick={() => setActiveSubTab('complaints')}
+          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+            activeSubTab === 'complaints' ? 'text-teal-600 font-extrabold' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>صندوق الشكاوى والمقترحات 📬</span>
+          {activeSubTab === 'complaints' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600 rounded-full" />}
+        </button>
+        <button
           onClick={() => setActiveSubTab('settings')}
-          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer ${
+          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
             activeSubTab === 'settings' ? 'text-teal-600 font-extrabold' : 'text-slate-500 hover:text-slate-800'
           }`}
           id="btn-admin-tab-settings"
         >
-          <span>معايرة الحدود المرجعية الطبية</span>
+          <span>ترس الإعدادات والنسخ السحابي</span>
           {activeSubTab === 'settings' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600 rounded-full" />}
         </button>
       </div>
@@ -518,6 +545,191 @@ export default function AdminPortal({
         </div>
       )}
 
+      {/* TAB CONTENT: NOTIFICATIONS */}
+
+      {/* TAB CONTENT: NOTIFICATIONS */}
+      {activeSubTab === 'notifications' && (
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-100 shadow-sm text-sm space-y-6 animate-fadeIn">
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+            <h3 className="text-base font-bold text-slate-800">إشعارات المرضى (WhatsApp & SMS)</h3>
+          </div>
+          <div className="text-slate-500 mb-4 bg-slate-50 p-4 rounded-xl text-xs">
+            قم بتفعيل الرسائل التلقائية لتنبيه المريض فور الانتهاء من التحاليل الطبية وإرسال رابط التقرير كاختصاص معمل متميز.
+          </div>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-4 border border-slate-200 rounded-xl">
+              <div>
+                <span className="block font-bold text-slate-800 mb-1">إرسال رسالة SMS عند الجاهزية</span>
+                <span className="text-xs text-slate-500">يتطلب رصيد رسائل نصية أو اشتراك سنوي بتبادل الرسائل</span>
+              </div>
+              <input type="checkbox" className="w-5 h-5 accent-teal-600" />
+            </div>
+            <div className="flex justify-between items-center p-4 border border-slate-200 rounded-xl bg-teal-50/20">
+              <div>
+                <span className="block font-bold text-teal-800 mb-1">إرسال رابط التقرير عبر الواتساب تلقائيا</span>
+                <span className="text-xs text-slate-500">ينصح به بشدة لتمييز مختبرك عن المختبرات التقليدية</span>
+              </div>
+              <input type="checkbox" defaultChecked className="w-5 h-5 accent-teal-600 cursor-pointer" />
+            </div>
+            <div className="flex justify-between items-center p-4 border border-slate-200 rounded-xl">
+              <div>
+                <span className="block font-bold text-rose-800 mb-1">تنبيه فوري بالطبيب المعالج بالقيم الحرجة</span>
+                <span className="text-xs text-slate-500">القيم غير الطبيعية بشدة تصل للطبيب فوراً SMS</span>
+              </div>
+              <input type="checkbox" className="w-5 h-5 accent-teal-600 cursor-pointer" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: COMPLAINTS & SUGGESTIONS MAIN LIST BOX */}
+      {activeSubTab === 'complaints' && (
+        <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm text-sm space-y-6 animate-fadeIn" dir="rtl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <ShieldQuestion className="w-5 h-5 text-indigo-600 font-bold" />
+              <div>
+                <h3 className="text-base font-black text-slate-900">صندوق الشكاوى والمقترحات السحابي</h3>
+                <p className="text-[10px] text-slate-400 font-bold">شكاوى المرضى واستفسارات جودة الفحص الطبية والمراجعة الإكلينيكية</p>
+              </div>
+            </div>
+            <div className="bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs text-slate-600 font-bold">
+              مجموع الشكاوى: <span className="text-indigo-600 font-extrabold">{complaints?.length || 0}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* List Column */}
+            <div className="lg:col-span-2 space-y-4">
+              <h4 className="font-extrabold text-xs text-slate-700">قائمة الشكاوى والمقترحات الأخيرة:</h4>
+              
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {(!complaints || complaints.length === 0) ? (
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-8 text-center text-slate-400 py-16">
+                    العلبة فارغة! لا توجد شكاوي أو بلاغات مسجلة من المرضى حالياً.
+                  </div>
+                ) : (
+                  complaints.map((c) => (
+                    <div 
+                      key={c.id} 
+                      onClick={() => {
+                        setSelectedComplaint(c);
+                        setReplyText(c.adminReply || '');
+                        setReplyStatus(c.status === 'pending' ? 'resolved' : c.status);
+                      }}
+                      className={`border rounded-2xl p-4 space-y-2 cursor-pointer transition-all ${
+                        selectedComplaint?.id === c.id 
+                          ? 'border-indigo-500 bg-indigo-50/20 shadow-md ring-2 ring-indigo-500/20' 
+                          : 'border-slate-150 hover:border-slate-350 bg-white hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-slate-400">{c.id}</span>
+                          <span className="text-[10px] text-slate-400 font-bold">({c.date})</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          c.status === 'resolved' 
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
+                            : c.status === 'investigating'
+                            ? 'bg-amber-50 text-amber-800 border border-amber-100'
+                            : 'bg-rose-50 text-rose-800 border border-rose-100 animate-pulse'
+                        }`}>
+                          {c.status === 'resolved' ? 'تم الرد للعميل ✓' : c.status === 'investigating' ? 'قيد المتابعة والتحقيق ⚖' : 'جديد بانتظار الرد ⏳'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 font-bold border-b border-dashed pb-2">
+                        <div>صاحب الشكوى: <span className="text-slate-800">{c.name}</span></div>
+                        <div className="text-left font-mono">الهاتف: <span className="text-slate-800">{c.phone}</span></div>
+                      </div>
+
+                      <p className="text-xs text-slate-800 leading-relaxed font-semibold">
+                        {c.details}
+                      </p>
+
+                      {c.testId && (
+                        <div className="inline-block bg-slate-100 border border-slate-200.5 rounded text-[10px] font-mono text-slate-650 px-2 py-0.5">
+                          رمز الفحص المرتبط: {c.testId}
+                        </div>
+                      )}
+
+                      {c.adminReply && (
+                        <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 text-[11px] text-slate-650 mt-2 font-medium">
+                          <span className="font-extrabold text-slate-800 block mb-1">الرد المرسل للتطبيق:</span>
+                          <p>{c.adminReply}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Reply Panel Column */}
+            <div className="space-y-4">
+              <h4 className="font-extrabold text-xs text-slate-700">معالجة وإجابة العميل البلاغية:</h4>
+              
+              {selectedComplaint ? (
+                <div className="bg-slate-50 border border-slate-200.5 rounded-2xl p-4 space-y-4 animate-fadeIn">
+                  <div className="border-b border-slate-200 pb-3">
+                    <span className="text-[10px] font-mono text-slate-450 block">الشكوى المحددة:</span>
+                    <span className="font-extrabold text-xs text-slate-800">{selectedComplaint.id} - {selectedComplaint.name}</span>
+                    <div className="text-[10px] text-indigo-700 font-bold mt-1">
+                      الفئة: {selectedComplaint.category === 'technical' ? 'تقنية بالتطبيق' : selectedComplaint.category === 'delay' ? 'تأخر في النتيجة' : selectedComplaint.category === 'billing' ? 'مشكلة مالية/دفع' : 'أخرى/مقترح تطوير'}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="block text-slate-650 font-bold mb-1.5">حالة الشكوى والتقرير:</label>
+                      <select
+                        value={replyStatus}
+                        onChange={(e) => setReplyStatus(e.target.value as any)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none text-right cursor-pointer"
+                      >
+                        <option value="resolved">تم الحل والتسوية الكاملة (Resolved ✓)</option>
+                        <option value="investigating">قيد التحقيق والبحث الميداني (Investigating ⚖)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-650 font-bold mb-1.5 font-sans">نص الرد الدبلوماسي أو الطبي (يظهر فورا للمريض):</label>
+                      <textarea
+                        required
+                        rows={6}
+                        placeholder="اكتب هنا توضيح الإدارة الطبية أو الخطوات الإيجابية التي تم اتخاذها حيال المريض..."
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        className="w-full bg-white border border-slate-250 rounded-xl px-3 py-2 text-xs outline-none text-right focus:border-indigo-500 font-medium leading-relaxed"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onReplyComplaint) {
+                          onReplyComplaint(selectedComplaint.id, replyText, replyStatus);
+                          setSelectedComplaint(null);
+                          setReplyText('');
+                        }
+                      }}
+                      className="w-full bg-indigo-650 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      إرسال الرد وحفظ الحالة السحابية
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center text-slate-400 italic py-16">
+                  يرجى النقر على أي شكوى أو مقترح في القائمة الجانبية لبدء دراستها الميدانية وإجابة المستعلم فوراً.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB CONTENT: OWNER DOCTOR HYPER-SETTINGS & CUSTOMIZATION */}
       {activeSubTab === 'settings' && (
         <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm text-sm space-y-8 animate-fadeIn">
@@ -572,13 +784,13 @@ export default function AdminPortal({
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">رقم رخصة مزاولة المهنة الطبية (MOH License):</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">رقم رخصة مزاولة المهنة الطبية (MOH License) - اختياري:</label>
                 <input
                   type="text"
+                  placeholder="مثال: MD-74092-2026 (متروك اختيارياً)"
                   value={settings.doctorLicense}
                   onChange={(e) => onUpdateSettings({ ...settings, doctorLicense: e.target.value })}
                   className="w-full text-left font-mono bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:border-emerald-600 outline-none transition-all"
-                  required
                 />
               </div>
             </div>
@@ -623,7 +835,7 @@ export default function AdminPortal({
                 <label className="block text-[11px] font-bold text-slate-600 mb-1">البريد الإلكتروني للإدارة (المالك):</label>
                 <input
                   type="email"
-                  value={settings.doctorEmail || "director@mylab.com"}
+                  value={settings.doctorEmail || ""}
                   onChange={(e) => onUpdateSettings({ ...settings, doctorEmail: e.target.value })}
                   className="w-full text-right bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:border-emerald-600 outline-none transition-all font-mono"
                   required
@@ -633,7 +845,7 @@ export default function AdminPortal({
                 <label className="block text-[11px] font-bold text-slate-600 mb-1">رمز المرور الأمني للإدارة (المالك):</label>
                 <input
                   type="text"
-                  value={settings.doctorPasscode || "director_passcode_881"}
+                  value={settings.doctorPasscode || ""}
                   onChange={(e) => onUpdateSettings({ ...settings, doctorPasscode: e.target.value })}
                   className="w-full text-right bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:border-emerald-600 outline-none transition-all font-mono"
                   required
@@ -670,38 +882,6 @@ export default function AdminPortal({
                   );
                 })}
               </div>
-            </div>
-
-            {/* INTEGRATED INTELLIGENCE PERMISSIONS ASSISTANT (الذكاء المدمج لتسهيل بناء صلاحيات جديده) */}
-            <div className="bg-slate-900 border border-slate-800 text-slate-100 p-4 rounded-2xl space-y-3">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
-                <span>التعاون الدلالي مع الذكاء المدمج لصياغة وبناء صلاحيات الموظف</span>
-              </div>
-              <textarea
-                rows={2}
-                value={aiPermPrompt}
-                onChange={(e) => setAiPermPrompt(e.target.value)}
-                placeholder="أدخل توجهاً باللغة العربية الفصحى. مثال: (أريد حظر صلاحية الفواتير والمالية عن الملاك والاحتفاظ بجدولة المواعيد وتسجيل المريض فقط) أو (تمكينه من كل الصلاحيات المتاحة)"
-                className="w-full text-right bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-emerald-500 font-sans text-slate-100 placeholder-slate-550 resize-none leading-relaxed"
-              />
-              <div className="flex justify-between items-center gap-4">
-                <button
-                  type="button"
-                  onClick={handleCompilePermissionsWithAI}
-                  disabled={aiPermLoading || !aiPermPrompt.trim()}
-                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-extrabold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  {aiPermLoading ? 'جاري التحليل البرمجي...' : 'معالجة الأمر وتطبيق الصلاحيات السحابية'}
-                </button>
-                <span className="text-[10px] text-slate-450 font-mono">LIS NLP-Compiler v1.9</span>
-              </div>
-
-              {aiPermResult && (
-                <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs text-emerald-300 leading-relaxed font-sans whitespace-pre-line animate-fadeIn">
-                  {aiPermResult}
-                </div>
-              )}
             </div>
           </div>
 
@@ -788,18 +968,7 @@ export default function AdminPortal({
                 />
               </label>
 
-              <label className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-150 rounded-xl cursor-pointer">
-                <div>
-                  <span className="font-bold text-slate-800 text-xs block">تخطي الفحص البيومتري</span>
-                  <span className="text-[10px] text-slate-400">تجاوز بصمة التأكيد ومصادقة الطبيب المالك</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.allowBiometricBypass}
-                  onChange={(e) => onUpdateSettings({ ...settings, allowBiometricBypass: e.target.checked })}
-                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-5 h-5"
-                />
-              </label>
+
             </div>
           </div>
 
@@ -1194,7 +1363,7 @@ export default function AdminPortal({
           <hr className="border-slate-100" />
 
           <div className="pt-4 flex justify-between items-center border-t border-slate-100">
-            <span className="text-[10px] text-slate-400 font-mono">آخر تحديث سحابي: 2026-06-08 UTC</span>
+            <span className="text-[10px] text-slate-400 font-mono">آخر تحديث سحابي: {new Date().toISOString().split('T')[0]} UTC</span>
             <button
               type="button"
               onClick={() => {

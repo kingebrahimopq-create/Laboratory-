@@ -1,21 +1,23 @@
-import { Patient, LabTest, Appointment, DoctorSettings } from '../types';
-import { INITIAL_PATIENTS, INITIAL_APPOINTMENTS, INITIAL_TESTS } from '../data';
+import { Patient, LabTest, Appointment, DoctorSettings, AppComplaint } from '../types';
 
 // Local storage keys
-const KEY_PATIENTS = 'mylab_db_patients';
-const KEY_APPOINTMENTS = 'mylab_db_appointments';
-const KEY_TESTS = 'mylab_db_tests';
-const KEY_SETTINGS = 'mylab_db_settings';
+const KEY_PATIENTS = 'lims_mylab_db_patients_v2';
+const KEY_APPOINTMENTS = 'lims_mylab_db_appointments_v2';
+const KEY_TESTS = 'lims_mylab_db_tests_v2';
+const KEY_SETTINGS = 'lims_mylab_db_settings_v2';
+const KEY_COMPLAINTS = 'lims_mylab_db_complaints_v2';
 
 const DEFAULT_SETTINGS: DoctorSettings = {
-  labNameAr: "مختبر المالك الطبي المركزي",
-  labNameEn: "Owner's Central Clinical Laboratory (MyLab)",
-  doctorName: "د. عبد الرحمن الفضلي",
-  doctorLicense: "SCHS-772910-AR",
-  receptionUsername: "staff_reception_authorized",
-  receptionPassword: "secure_reception_pass_990",
-  doctorEmail: "director@mylab.com",
-  doctorPasscode: "director_passcode_881",
+  labNameAr: "معمل النيل للتحاليل الطبية والتشخيص",
+  labNameEn: "Nile Clinical Laboratory & Diagnostics",
+  clinicName: "معمل النيل للتحاليل الطبية والتشخيص",
+  labPhone: "0102919381",
+  doctorName: "د. صفاء عبد اللطيف الشافعي",
+  doctorLicense: "رقم قيد نقابة الأطباء: 89745-EG",
+  receptionUsername: "reception",
+  receptionPassword: "reception_authorized_99",
+  doctorEmail: "safaa@mylab.eg",
+  doctorPasscode: "0e02ddd1",
   receptionPermissions: ['register_patient', 'billing', 'appointments', 'view_all_records'],
   allowBiometricBypass: false,
   enableTechnicianPlatform: true,
@@ -27,9 +29,10 @@ const DEFAULT_SETTINGS: DoctorSettings = {
     CBC: 180,
     LIPID: 240,
     LIVER: 300,
-    GLUCOSE: 120
+    GLUCOSE: 120,
+    THYROID: 450,
+    KIDNEY: 200
   },
-  // Automatically configure Google Drive and electronic printer Defaults
   enableGoogleDriveBackup: true,
   googleDriveToken: "DRIVE_AUTH_TOKEN_PLACEHOLDER",
   googleDriveBackupInterval: "immediate",
@@ -37,15 +40,54 @@ const DEFAULT_SETTINGS: DoctorSettings = {
   allowResultCopying: true,
   printerConnectionType: "network",
   printerIpAddress: "192.168.1.100",
-  currency: "EGP"
+  currency: "EGP",
+  barcodeLocation: "bottom",
+  thermalWidth: "80mm"
 };
+
+// Seed lists with realistic Egyptian names and Egyptian Pound prices (EGP)
+const SEED_PATIENTS: Patient[] = [];
+
+const SEED_APPOINTMENTS: Appointment[] = [];
+
+const SEED_TESTS: LabTest[] = [];
 
 /**
  * Robust Clinical Database Module
  * Provides genuine database persistence across restarts, browser closures, or reboots.
- * This satisfies both Windows desktop local database requirements and Android mobile offline architectures.
  */
 export const ClinicalDatabase = {
+  /**
+   * Biometric Custom Registered Fingerprints
+   */
+  getRegisteredBiometrics(): Record<string, string> {
+    try {
+      const stored = localStorage.getItem('lims_mylab_db_biometrics_v2');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+      const defaultBiometrics = {};
+      localStorage.setItem('lims_mylab_db_biometrics_v2', JSON.stringify(defaultBiometrics));
+      return defaultBiometrics;
+    } catch {
+      return {};
+    }
+  },
+
+  registerBiometric(userId: string, patternDescription: string): void {
+    try {
+      const existing = this.getRegisteredBiometrics();
+      existing[userId] = patternDescription;
+      localStorage.setItem('lims_mylab_db_biometrics_v2', JSON.stringify(existing));
+    } catch (e) {
+      console.error('Failed to register biometric pattern:', e);
+    }
+  },
+
+  clearBiometrics(): void {
+    localStorage.removeItem('lims_mylab_db_biometrics_v2');
+  },
+
   /**
    * Doctor Settings Operations
    */
@@ -85,9 +127,8 @@ export const ClinicalDatabase = {
     } catch (e) {
       console.error('Failed to read patients from storage:', e);
     }
-    // Seed default records if empty to ensure the app is never blank
-    this.saveAllPatients(INITIAL_PATIENTS);
-    return INITIAL_PATIENTS;
+    this.saveAllPatients(SEED_PATIENTS);
+    return SEED_PATIENTS;
   },
 
   savePatient(newPatient: Patient): Patient[] {
@@ -126,8 +167,8 @@ export const ClinicalDatabase = {
     } catch (e) {
       console.error('Failed to read appointments from storage:', e);
     }
-    this.saveAllAppointments(INITIAL_APPOINTMENTS);
-    return INITIAL_APPOINTMENTS;
+    this.saveAllAppointments(SEED_APPOINTMENTS);
+    return SEED_APPOINTMENTS;
   },
 
   saveAppointment(newApt: Appointment): Appointment[] {
@@ -165,8 +206,8 @@ export const ClinicalDatabase = {
     } catch (e) {
       console.error('Failed to read tests from storage:', e);
     }
-    this.saveAllTests(INITIAL_TESTS);
-    return INITIAL_TESTS;
+    this.saveAllTests(SEED_TESTS);
+    return SEED_TESTS;
   },
 
   saveTest(newTest: LabTest): LabTest[] {
@@ -186,6 +227,61 @@ export const ClinicalDatabase = {
       localStorage.setItem(KEY_TESTS, JSON.stringify(tests));
     } catch (e) {
       console.error('Failed to save tests to local DB:', e);
+    }
+  },
+
+  getComplaints(): AppComplaint[] {
+    try {
+      const stored = localStorage.getItem(KEY_COMPLAINTS);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Failed to get complaints:', e);
+    }
+    const seed: AppComplaint[] = [
+      {
+        id: "CQ-2026-001",
+        name: "محمد عبد السلام",
+        phone: "01092819382",
+        category: "delay",
+        details: "تأخر ظهور نتيجة فحص السكر التراكمي لعدة ساعات عن الموعد المتوقع.",
+        testId: "LAB-2026-004",
+        date: "2026-06-08",
+        status: "resolved",
+        adminReply: "تم حل الشكوى وتسليم التقرير مع تقديم خصم ٢٥٪ للفحص القادم كاعتذار من معمل النيل."
+      },
+      {
+        id: "CQ-2026-002",
+        name: "سارة محمود علي",
+        phone: "01283921822",
+        category: "technical",
+        details: "لم أتمكن من تسجيل الدخول التلقائي عبر بصمة الإصبع في هاتفي الأندرويد لأول مرة.",
+        date: "2026-06-09",
+        status: "pending"
+      }
+    ];
+    this.saveAllComplaints(seed);
+    return seed;
+  },
+
+  saveComplaint(c: AppComplaint): AppComplaint[] {
+    const list = this.getComplaints();
+    const idx = list.findIndex(item => item.id === c.id);
+    if (idx >= 0) {
+      list[idx] = c;
+    } else {
+      list.unshift(c);
+    }
+    this.saveAllComplaints(list);
+    return list;
+  },
+
+  saveAllComplaints(list: AppComplaint[]): void {
+    try {
+      localStorage.setItem(KEY_COMPLAINTS, JSON.stringify(list));
+    } catch (e) {
+      console.error('Failed to save complaints:', e);
     }
   }
 };

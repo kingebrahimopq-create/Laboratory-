@@ -13,6 +13,7 @@ interface ReceptionPortalProps {
   appointments: Appointment[];
   language?: 'ar' | 'en';
   currency?: 'SAR' | 'EGP';
+  globalDiscountPercent?: number;
   onRegisterPatient: (patient: Patient) => void;
   onConfirmAppointment: (id: string) => void;
   onCancelAppointment: (id: string) => void;
@@ -25,17 +26,17 @@ export default function ReceptionPortal({
   appointments,
   language = 'ar',
   currency = 'EGP',
+  globalDiscountPercent = 0,
   onRegisterPatient,
   onConfirmAppointment,
   onCancelAppointment,
   onLogTestRequest
 }: ReceptionPortalProps) {
-  const [activeTab, setActiveTab] = useState<'patients' | 'appointments' | 'billing'>('patients');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'billing'>('appointments');
   
   const formatPrice = (sarPrice: number) => {
-    const coeff = currency === 'EGP' ? 13 : 1;
     const symbol = currency === 'EGP' ? (language === 'ar' ? 'ج.م' : 'EGP') : (language === 'ar' ? 'ر.س' : 'SAR');
-    return `${Math.round(sarPrice * coeff)} ${symbol}`;
+    return `${sarPrice} ${symbol}`;
   };
   
   // Search State
@@ -53,9 +54,11 @@ export default function ReceptionPortal({
 
   // Log Lab Test State
   const [selectedPatId, setSelectedPatId] = useState<string | null>(null);
-  const [testTypeSelect, setTestTypeSelect] = useState<'CBC' | 'LIPID' | 'LIVER' | 'GLUCOSE'>('CBC');
-  const [testCost, setTestCost] = useState(200);
-  const [paidAmount, setPaidAmount] = useState(200);
+  const [testTypeSelect, setTestTypeSelect] = useState<'CBC' | 'LIPID' | 'LIVER' | 'GLUCOSE' | 'THYROID' | 'KIDNEY' | 'OTHER'>('CBC');
+  const [customTestTitleAr, setCustomTestTitleAr] = useState('');
+  const [customTestTitleEn, setCustomTestTitleEn] = useState('');
+  const [testCost, setTestCost] = useState(180);
+  const [paidAmount, setPaidAmount] = useState(180);
   const [logSuccess, setLogSuccess] = useState(false);
 
   // Barcode printed simulation popup State
@@ -114,16 +117,36 @@ export default function ReceptionPortal({
     } else if (testTypeSelect === 'GLUCOSE') {
       titleAr = 'تحليل السكر الشامل';
       titleEn = 'Comprehensive Glucose Profile';
+    } else if (testTypeSelect === 'THYROID') {
+      titleAr = 'تحليل وظائف الغدة الدرقية';
+      titleEn = 'Thyroid Function Test';
+    } else if (testTypeSelect === 'KIDNEY') {
+      titleAr = 'تحليل وظائف الكلى';
+      titleEn = 'Kidney Function Test (KFT)';
+    } else if (testTypeSelect === 'OTHER') {
+      titleAr = customTestTitleAr || 'تحليل مخبري مخصص';
+      titleEn = customTestTitleEn || 'Custom Diagnostic Test';
     }
 
     // Default empty parameter list based on templates
-    const defaultParams = PARAMETER_TEMPLATES[testTypeSelect].map(p => ({
-      name: p.name,
-      nameAr: p.nameAr,
-      unit: p.unit,
-      minNormal: p.minNormal,
-      maxNormal: p.maxNormal
-    }));
+    let defaultParams = [];
+    if (testTypeSelect === 'OTHER') {
+      defaultParams = [{
+        name: 'General Diagnostic Level',
+        nameAr: 'مؤشر نتيجة التحليل الإجمالي',
+        unit: 'Ratio / Unit',
+        minNormal: 0,
+        maxNormal: 100
+      }];
+    } else {
+      defaultParams = PARAMETER_TEMPLATES[testTypeSelect].map(p => ({
+        name: p.name,
+        nameAr: p.nameAr,
+        unit: p.unit,
+        minNormal: p.minNormal,
+        maxNormal: p.maxNormal
+      }));
+    }
 
     onLogTestRequest({
       patientId: pat.id,
@@ -215,20 +238,10 @@ export default function ReceptionPortal({
       </div>
 
       {/* Tabs Menu */}
-      <div className="flex gap-2 border-b border-slate-200 pb-px">
-        <button
-          onClick={() => setActiveTab('patients')}
-          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer ${
-            activeTab === 'patients' ? 'text-teal-600' : 'text-slate-500 hover:text-slate-800'
-          }`}
-          id="tab-recep-patients"
-        >
-          <span>سجل المرضى والفحوصات</span>
-          {activeTab === 'patients' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-600 rounded-full" />}
-        </button>
+      <div className="flex gap-2 border-b border-slate-200 pb-px overflow-x-auto flex-nowrap md:flex-wrap whitespace-nowrap md:whitespace-normal scrollbar-none">
         <button
           onClick={() => setActiveTab('appointments')}
-          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer ${
+          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer shrink-0 ${
             activeTab === 'appointments' ? 'text-teal-600' : 'text-slate-500 hover:text-slate-800'
           }`}
           id="tab-recep-appointments"
@@ -238,7 +251,7 @@ export default function ReceptionPortal({
         </button>
         <button
           onClick={() => setActiveTab('billing')}
-          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer ${
+          className={`pb-3 px-4 font-bold text-sm relative transition-all cursor-pointer shrink-0 ${
             activeTab === 'billing' ? 'text-teal-600' : 'text-slate-500 hover:text-slate-800'
           }`}
           id="tab-recep-billing"
@@ -600,21 +613,69 @@ export default function ReceptionPortal({
                       if (type === 'LIPID') cost = 240;
                       if (type === 'LIVER') cost = 300;
                       if (type === 'GLUCOSE') cost = 120;
+                      if (type === 'THYROID') cost = 450;
+                      if (type === 'KIDNEY') cost = 200;
+                      if (type === 'OTHER') cost = 150;
                       setTestCost(cost);
                       setPaidAmount(cost);
                     }}
-                    className="w-full text-right bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-teal-500 outline-none transition-all cursor-pointer"
+                    className="w-full text-right bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-teal-500 outline-none transition-all cursor-pointer font-bold"
                     id="log-testtype-select"
                   >
                     <option value="CBC">صورة دم كاملة (CBC) - {formatPrice(180)}</option>
                     <option value="LIPID">فحص الدهون الشامل (LIPID) - {formatPrice(240)}</option>
                     <option value="LIVER">فحص وظائف الكبد (LIVER) - {formatPrice(300)}</option>
                     <option value="GLUCOSE">تحليل السكر الشامل (GLUCOSE) - {formatPrice(120)}</option>
+                    <option value="THYROID">وظائف الغدة الدرقية (THYROID) - {formatPrice(450)}</option>
+                    <option value="KIDNEY">وظائف الكلى (KIDNEY) - {formatPrice(200)}</option>
+                    <option value="OTHER">✍️ إضافة تحليل مخبري مخصص / فحص آخر</option>
                   </select>
+
+                  {testTypeSelect === 'OTHER' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 p-3 bg-teal-50/50 border border-teal-100 rounded-xl animate-fadeIn">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">اسم الفحص بالعربي *</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: تحليل نسيجي عينة غدة"
+                          value={customTestTitleAr}
+                          onChange={(e) => setCustomTestTitleAr(e.target.value)}
+                          className="w-full text-right bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-teal-500 outline-none font-bold"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">اسم الفحص بالإنجليزي (أو الرمز) *</label>
+                        <input
+                          type="text"
+                          placeholder="Example: TSH Thyroid Panel"
+                          value={customTestTitleEn}
+                          onChange={(e) => setCustomTestTitleEn(e.target.value)}
+                          className="w-full text-left bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-teal-500 outline-none font-mono"
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">تكلفة التحليل المعتمدة ({currency === 'EGP' ? (language === 'ar' ? 'ج.م' : 'EGP') : (language === 'ar' ? 'ر.س' : 'SAR')}):</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-600">تكلفة التحليل المعتمدة ({currency === 'EGP' ? (language === 'ar' ? 'ج.م' : 'EGP') : (language === 'ar' ? 'ر.س' : 'SAR')}):</label>
+                    {globalDiscountPercent > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newCost = Math.round(testCost * (1 - globalDiscountPercent / 100));
+                          setTestCost(newCost);
+                          if (paidAmount > newCost) setPaidAmount(newCost);
+                        }}
+                        className="text-[10px] bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-bold transition-colors cursor-pointer"
+                      >
+                        تطبيق خصم عام ({globalDiscountPercent}%)
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="number"
                     value={testCost}
