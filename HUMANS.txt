@@ -1,0 +1,12 @@
+/* TEAM */
+Lead Developer: Ibrahim Muhammad (kingebrahimopq-create)
+Email: kingebrahimopq-create@gmail.com
+GitHub: https://github.com/kingebrahimopq-create
+
+/* THANKS */
+- All contributors
+- Open source community
+- RealFaviconGenerator (https://realfavicongenerator.net/)
+- TailwindCSS (https://tailwindcss.com/)
+- React (https://react.dev/)
+- Vite (https://vitejs.dev/)
