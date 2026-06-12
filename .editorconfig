@@ -8,14 +8,11 @@ indent_size = 2
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-[*.md]
-trim_trailing_whitespace = false
-
-[*.{json,yml,yaml}]
+[*.{js,jsx,ts,tsx,json,yml,yaml,md,html,css,scss,less}]
 indent_size = 2
 
-[*.tsx?]
-indent_size = 2
+[*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf}]
+binary = true
 
 [Makefile]
 indent_style = tab

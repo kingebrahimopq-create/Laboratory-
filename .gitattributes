@@ -4,8 +4,14 @@
 *.json text
 *.yml text
 *.yaml text
-*.xml text
-*.csv text
+*.ts text
+*.tsx text
+*.js text
+*.jsx text
+*.css text
+*.scss text
+*.less text
+*.html text
 
 # Binary files
 *.png binary
@@ -13,36 +19,36 @@
 *.jpeg binary
 *.gif binary
 *.ico binary
-*.svg text
-*.pdf binary
+*.svg binary
 *.woff binary
 *.woff2 binary
 *.ttf binary
 *.eot binary
 
-# Node modules
-/node_modules/ linguist-vendored
+# Line endings
+*.sh text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
 
-# IDE
-.idea/ linguist-vendored
-.vscode/ linguist-vendored
+# Diff settings
+*.png diff=lfs
+*.jpg diff=lfs
+*.jpeg diff=lfs
+*.gif diff=lfs
+*.ico diff=lfs
+*.svg diff=lfs
+*.woff diff=lfs
+*.woff2 diff=lfs
+*.ttf diff=lfs
+*.eot diff=lfs
 
-# OS
-.DS_Store linguist-vendored
-Thumbs.db linguist-vendored
+# Merge drivers
+*.lock merge=union
+package*.json merge=union
 
-# Logs
-*.log linguist-vendored
-npm-debug.log* linguist-vendored
-
-# Environment
-.env linguist-vendored
-.env.* linguist-vendored
-!.env.example
-
-# Build
-/dist/ linguist-vendored
-/build/ linguist-vendored
-
-# Coverage
-/coverage/ linguist-vendored
+# Language detection
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+*.js linguist-language=JavaScript
+*.jsx linguist-language=JavaScript
