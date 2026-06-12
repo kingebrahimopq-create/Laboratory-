@@ -172,19 +172,60 @@ input:focus, select:focus, textarea:focus {
 
 /* Button base */
 .btn {
-  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+  cursor: pointer;
 }
 
 .btn-primary {
-  @apply btn bg-teal-600 text-white hover:bg-teal-700 active:scale-95;
+  @extend .btn;
+  background-color: #0d9488;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0f766e;
+}
+
+.btn-primary:active {
+  transform: scale(0.95);
 }
 
 .btn-secondary {
-  @apply btn bg-slate-200 text-slate-700 hover:bg-slate-300 active:scale-95;
+  @extend .btn;
+  background-color: #e2e8f0;
+  color: #334155;
+}
+
+.btn-secondary:hover {
+  background-color: #cbd5e1;
+}
+
+.btn-secondary:active {
+  transform: scale(0.95);
 }
 
 .btn-danger {
-  @apply btn bg-red-600 text-white hover:bg-red-700 active:scale-95;
+  @extend .btn;
+  background-color: #dc2626;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+.btn-danger:active {
+  transform: scale(0.95);
 }
 
 /* Table styling */
