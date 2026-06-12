@@ -1,11 +1,11 @@
 import React, { useState, forwardRef, HTMLAttributes } from 'react';
-import { cn } from '../../../lib/utils';
+import { cn } from '../../lib/utils';
 import { ChevronDown } from 'lucide-react';
 
-export interface SelectProps extends HTMLAttributes<HTMLDivElement> {
+export interface SelectProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> {
   options: { value: string; label: string; disabled?: boolean }[];
   value?: string; onChange?: (value: string) => void;
-  placeholder?: string; disabled?: boolean; error?: string; label?: string;
+  placeholder?: string; disabled?: boolean; error?: string; label?: string; required?: boolean;
 }
 
 const Select = forwardRef<HTMLDivElement, SelectProps>(

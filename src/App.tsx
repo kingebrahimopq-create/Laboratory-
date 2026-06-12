@@ -22,7 +22,7 @@ import { initAuth, googleSignIn, logout, getAccessToken } from './auth';
 // Import new services and hooks
 import { getPrinterService, PrinterConnectionType } from './services/printer-service';
 import { useToast } from './components/ui/Toast';
-import { DatabaseAdapter } from './db/database-adapter';
+import { DatabaseAdapter, StorageType } from './db/database-adapter';
 
 export default function App() {
   // Toast notification system
@@ -94,7 +94,7 @@ export default function App() {
     initPrinter();
     
     // Initialize database adapter
-    DatabaseAdapter.create('local');
+    DatabaseAdapter.create(StorageType.LOCAL);
     
     return () => {
       printerService.disconnect();

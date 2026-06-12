@@ -229,7 +229,7 @@ async function setupServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`[LIMS System Server v2.0.0] Express full-stack running on http://0.0.0.0:${PORT}`);
     console.log(`[Environment] ${process.env.NODE_ENV || "development"}`);
     console.log(`[AI Assistant] ${process.env.GEMINI_API_KEY ? 'Enabled (Gemini)' : 'Disabled (No API key)'}`);

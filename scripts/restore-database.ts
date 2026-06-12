@@ -5,7 +5,7 @@
  * Usage: npm run db:restore -- backups/mylab_backup_2026-01-01.json
  */
 
-import { DatabaseAdapter } from '../src/db/database-adapter';
+import { DatabaseAdapter, StorageType } from '../src/db/database-adapter';
 
 async function restore() {
   const filePath = process.argv[2];
@@ -33,7 +33,7 @@ async function restore() {
   console.log(`  Total records: ${data.metadata?.totalRecords || 'unknown'}`);
   console.log('');
 
-  const db = DatabaseAdapter.create('local');
+  const db = DatabaseAdapter.create(StorageType.LOCAL);
   await db.connect();
 
   console.log('⚠️  This will overwrite existing data. Proceed? (yes/no)');

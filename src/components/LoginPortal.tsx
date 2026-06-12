@@ -58,6 +58,14 @@ export default function LoginPortal({
   const [compPhone, setCompPhone] = useState('');
   const [compDetails, setCompDetails] = useState('');
   const [compTestId, setCompTestId] = useState('');
+
+  const [bioUsername, setBioUsername] = useState('');
+  const [showBioModal, setShowBioModal] = useState(false);
+  const [bioProgress, setBioProgress] = useState(0);
+  const [bioDiagnosticLog, setBioDiagnosticLog] = useState('');
+  const [bioResult, setBioResult] = useState<'idle' | 'scanning' | 'success' | 'failed'>('idle');
+  const [bioScanning, setBioScanning] = useState(false);
+
   const [compSuccess, setCompSuccess] = useState(false);
 
   const handlePublicComplaintSubmit = (e: React.FormEvent) => {

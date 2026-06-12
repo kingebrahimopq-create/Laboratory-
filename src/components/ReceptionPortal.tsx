@@ -32,7 +32,7 @@ export default function ReceptionPortal({
   onCancelAppointment,
   onLogTestRequest
 }: ReceptionPortalProps) {
-  const [activeTab, setActiveTab] = useState<'appointments' | 'billing'>('appointments');
+  const [activeTab, setActiveTab] = useState<'patients' | 'appointments' | 'billing'>('patients');
   
   const formatPrice = (sarPrice: number) => {
     const symbol = currency === 'EGP' ? (language === 'ar' ? 'ج.م' : 'EGP') : (language === 'ar' ? 'ر.س' : 'SAR');

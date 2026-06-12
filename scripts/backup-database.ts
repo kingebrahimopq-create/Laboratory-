@@ -6,12 +6,12 @@
  */
 
 import { ClinicalDatabase } from '../src/db/storage';
-import { DatabaseAdapter } from '../src/db/database-adapter';
+import { DatabaseAdapter, StorageType } from '../src/db/database-adapter';
 
 async function backup() {
   console.log('💾 Creating database backup...\n');
 
-  const db = DatabaseAdapter.create('local');
+  const db = DatabaseAdapter.create(StorageType.LOCAL);
   await db.connect();
 
   const result = await db.backup();

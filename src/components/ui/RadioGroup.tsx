@@ -1,7 +1,7 @@
 import React, { HTMLAttributes } from 'react';
-import { cn } from '../../../lib/utils';
+import { cn } from '../../lib/utils';
 
-export interface RadioGroupProps extends HTMLAttributes<HTMLDivElement> {
+export interface RadioGroupProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> {
   options: { value: string; label: string; disabled?: boolean }[];
   value?: string;
   onChange?: (value: string) => void;

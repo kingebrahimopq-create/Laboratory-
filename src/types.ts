@@ -100,6 +100,8 @@ export interface UserSession {
   patientId?: string; // If patient role
 }
 
+export interface InventoryItem { id: string; name: string; quantity: number; unit: string; }
+
 export interface AppComplaint {
   id: string;
   name: string;
