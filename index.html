@@ -1,13 +1,77 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="theme-color" content="#0d9488" />
+    <meta name="description" content="My Lab LIMS - Laboratory Information Management System for medical diagnostics" />
+    <meta name="keywords" content="LIMS, laboratory, medical, diagnostics, blood test, clinic" />
+    <meta name="author" content="My Lab Team" />
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MyLab LIMS" />
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="My Lab LIMS" />
+    <meta property="og:description" content="Laboratory Information Management System" />
+    <meta property="og:locale" content="ar_EG" />
+    
+    <!-- Security -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    
+    <title>My Lab LIMS - Laboratory Information Management System</title>
+    
+    <style>
+      /* Critical CSS for fast initial render */
+      html, body { margin: 0; padding: 0; background: #f8fafc; }
+      #root { min-height: 100vh; }
+      .loading-screen {
+        position: fixed; inset: 0; background: #f8fafc;
+        display: flex; align-items: center; justify-content: center;
+        z-index: 9999; transition: opacity 0.3s;
+      }
+      .loading-screen.hidden { opacity: 0; pointer-events: none; }
+      .loading-spinner {
+        width: 40px; height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #0d9488;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Loading screen shown until React mounts -->
+      <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Hide loading screen when app is ready
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const loader = document.getElementById('loading-screen');
+          if (loader) loader.classList.add('hidden');
+        }, 500);
+      });
+      
+      // Register service worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.log('SW registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>
-

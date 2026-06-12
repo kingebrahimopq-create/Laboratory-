@@ -5,7 +5,7 @@ import {
   Building2, Laptop, Network, Clock, ShieldCheck, Smartphone, Cpu, Activity,
   UserPlus, User, ClipboardList, Database, Receipt, Coins, Settings,
   ArrowRightLeft, AlertCircle, Info, HeartPulse, CheckSquare, ScanBarcode, LogOut,
-  Fingerprint, Sparkles, Send, ShieldAlert, CheckCircle2, Shield, Trash2, HelpCircle, Microscope, Printer, Edit3, FileText
+  Fingerprint, Sparkles, Send, ShieldAlert, CheckCircle2, Shield, Trash2, HelpCircle, Microscope, Printer, Edit3, FileText, Wifi
 } from 'lucide-react';
 
 // Import child views
@@ -19,11 +19,23 @@ import PrintableReport from './components/PrintableReport';
 import LoginPortal from './components/LoginPortal';
 import { initAuth, googleSignIn, logout, getAccessToken } from './auth';
 
+// Import new services and hooks
+import { getPrinterService, PrinterConnectionType } from './services/printer-service';
+import { useToast } from './components/ui/Toast';
+import { DatabaseAdapter } from './db/database-adapter';
+
 export default function App() {
+  // Toast notification system
+  const { ToastContainer, success, error, warning, info } = useToast();
+
   // Master database state (backed by robust persistent clinical database)
   const [patients, setPatients] = useState<Patient[]>(() => ClinicalDatabase.getPatients());
   const [appointments, setAppointments] = useState<Appointment[]>(() => ClinicalDatabase.getAppointments());
   const [tests, setTests] = useState<LabTest[]>(() => ClinicalDatabase.getTests());
+  
+  // Printer service integration
+  const [printerStatus, setPrinterStatus] = useState({ connected: false, type: 'disconnected' as string });
+  const printerService = getPrinterService();
 
   // Doctor settings and authentication session states
   const [settings, setSettings] = useState<DoctorSettings>(() => ClinicalDatabase.getSettings());
@@ -63,6 +75,31 @@ export default function App() {
 
   // --- MEDICAL SYSTEMS DISCOUNT RULE ---
   const [globalDiscountPercent, setGlobalDiscountPercent] = useState<number>(0);
+
+  // Initialize printer connection on mount
+  useEffect(() => {
+    const initPrinter = async () => {
+      const savedType = settings.printerConnectionType;
+      if (savedType && savedType !== 'disconnected') {
+        const connected = await printerService.connect({
+          type: savedType as PrinterConnectionType,
+          ipAddress: settings.printerIpAddress || '192.168.1.100'
+        });
+        if (connected) {
+          setPrinterStatus(printerService.getStatus());
+          info('تم الاتصال بالطابعة بنجاح');
+        }
+      }
+    };
+    initPrinter();
+    
+    // Initialize database adapter
+    DatabaseAdapter.create('local');
+    
+    return () => {
+      printerService.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -525,9 +562,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex flex-col antialiased text-slate-800" dir="rtl">
-      {/* Main Container Wrapper */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
+    <>
+      <ToastContainer />
+      <div className="min-h-screen bg-slate-50/50 flex flex-col antialiased text-slate-800" dir="rtl">
+        {/* Main Container Wrapper */}
+        <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
         
         {/* Printable View */}
         {viewingTestReport ? (
@@ -600,6 +639,14 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-4">
+                  {/* Printer Status Indicator */}
+                  {printerStatus.connected && (
+                    <div className="hidden sm:flex items-center gap-1.5 text-emerald-600" title={`Printer: ${printerStatus.type}`}>
+                      <Wifi className="w-3.5 h-3.5 animate-pulse" />
+                      <span className="text-[10px] font-bold">متصل</span>
+                    </div>
+                  )}
+                  
                   <div className="text-right hidden sm:block">
                     <span className="text-[10px] font-bold text-slate-400 block">الهوية الطبية النشطة</span>
                     <span className="text-xs font-black text-slate-800 truncate block max-w-[130px]">
@@ -1278,13 +1325,14 @@ export default function App() {
         </div>
       )}
 
-      {/* FOOTER */}
-      <footer className="bg-white border-t border-slate-100 py-6 text-center text-xs text-slate-400 no-print mt-12 bg-slate-50/20">
-        <p className="font-sans leading-relaxed">
-          جميع الحقوق محفوظة © معمل {settings.labNameAr || "MY LAB"} لـ معلومات المختبرات وإدارة النظم السحابية الطبية {(new Date()).getFullYear()}.
-        </p>
-      </footer>
-      <AppVersionInfo />
-    </div>
+        {/* FOOTER */}
+        <footer className="bg-white border-t border-slate-100 py-6 text-center text-xs text-slate-400 no-print mt-12 bg-slate-50/20">
+          <p className="font-sans leading-relaxed">
+            جميع الحقوق محفوظة © معمل {settings.labNameAr || "MY LAB"} لـ معلومات المختبرات وإدارة النظم السحابية الطبية {(new Date()).getFullYear()}.
+          </p>
+        </footer>
+        <AppVersionInfo />
+      </div>
+    </>
   );
 }

@@ -1,64 +1,22 @@
-name: Build Windows & Android Applications
+name: Build & Release Applications
 
 on:
   push:
     branches: [ "main", "master" ]
+    tags: [ 'v*' ]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 2.0.0)'
+        required: true
+        default: '2.0.0'
 
 permissions:
   contents: write
 
 jobs:
-  build-windows:
-    name: Build Windows Desktop Client
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Build Web Assets
-        run: npm run build
-
-      - name: package Electron App
-        run: |
-          npx electron-builder --win -c electron-builder.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Windows Executable Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MyLab-Windows-App
-          path: dist-electron/**/*.exe
-
-      - name: Upload Windows Executable to Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
-        with:
-          tag_name: "v1.0.0"
-          name: "My Lab LIMS v1.0.0 (التطبيقات الطبية الجاهزة)"
-          body: |
-            مرحباً بك! هنا تجد أحدث البنايات التلقائية للتطبيقات الطبية بنسخ مخصصة للتحميل المباشر دون الحاجة لتسجيل الدخول:
-            
-            * 📱 **تطبيق الأندرويد (.apk):** متكامل ومحدث فورياً للعمل على الجوالات والأجهزة الكفية الكبيرة.
-            * 💻 **تطبيق الويندوز (.exe):** حزمة تثبيت بضغطة واحدة لأجهزة الحاسوب لسطح المكتب في الإستقبال والمختبر.
-          draft: false
-          prerelease: false
-          files: dist-electron/*.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-android:
-    name: Build Android Mobile Client
+  build-web:
+    name: Build Web Application
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -67,7 +25,76 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build Web Assets
+        run: npm run build
+
+      - name: Upload Web Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyLab-Web-App
+          path: dist/
+          retention-days: 30
+
+  build-windows:
+    name: Build Windows Desktop App
+    needs: build-web
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build Web & Server Assets
+        run: npm run build
+
+      - name: Build Windows Installer
+        run: npx electron-builder --win --x64 --config electron-builder.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_ENV: production
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyLab-Windows-App
+          path: dist-electron/*.exe
+          if-no-files-found: warn
+
+      - name: Upload Windows Installer to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-electron/*.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-android:
+    name: Build Android Mobile App
+    needs: build-web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
           cache: 'npm'
 
       - name: Setup Java JDK
@@ -85,38 +112,84 @@ jobs:
       - name: Build Web Assets
         run: npm run build
 
-      - name: Initialize Capacitor Android
+      - name: Setup Capacitor Android
         run: |
-          npx cap add android || true
+          npx cap add android 2>/dev/null || true
           npx cap sync android
+          npx cap copy android
 
-      - name: Build Android APK (Debug & Unsigned Release)
-        run: |
-          cd android
-          ./gradlew assembleDebug
-          ./gradlew assembleRelease
+      - name: Build Android APK (Debug)
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload Android APK Artifact
+      - name: Build Android APK (Release Unsigned)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon || true
+
+      - name: Upload Android Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: MyLab-Android-App
+          name: MyLab-Android-Debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
 
-      - name: Upload Artifacts to Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+      - name: Upload Android Release APK
+        uses: actions/upload-artifact@v4
+        if: hashFiles('android/app/build/outputs/apk/release/app-release-unsigned.apk') != ''
         with:
-          tag_name: "v1.0.0"
-          name: "My Lab LIMS v1.0.0 (التطبيقات الطبية الجاهزة)"
-          body: |
-            مرحباً بك! هنا تجد أحدث البنايات التلقائية للتطبيقات الطبية بنسخ مخصصة للتحميل المباشر دون الحاجة لتسجيل الدخول:
-            
-            * 📱 **تطبيق الأندرويد (.apk):** متكامل ومحدث فورياً للعمل على الجوالات والأجهزة الكفية الكبيرة.
-            * 💻 **تطبيق الويندوز (.exe):** حزمة تثبيت بضغطة واحدة لأجهزة الحاسوب لسطح المكتب في الإستقبال والمختبر.
-          draft: false
-          prerelease: false
+          name: MyLab-Android-Release
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: ignore
+
+      - name: Upload Android APKs to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
           files: |
             android/app/build/outputs/apk/debug/app-debug.apk
-            android/app/build/outputs/apk/release/app-release-unsigned.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-release:
+    name: Create Release Summary
+    needs: [build-windows, build-android]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List Artifacts
+        run: ls -la artifacts/
+
+      - name: Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          body: |
+            # My Lab LIMS - Medical Laboratory Application
+            
+            ## Downloads
+            - 📱 **Android APK** (Debug): For testing on Android devices
+            - 💻 **Windows Installer**: Desktop application for Windows 10/11
+            - 🌐 **Web Application**: Static files for web deployment
+            
+            ## Features
+            - Patient management & registration
+            - Lab test ordering & results
+            - Appointment scheduling
+            - QR code verification
+            - Printable reports
+            - AI medical assistant
+            - Multi-language support (Arabic/English)
+            
+            ## Installation
+            - **Windows**: Run the `.exe` installer
+            - **Android**: Enable "Install from unknown sources" and install the `.apk`
+            - **Web**: Upload `dist/` folder to any static hosting
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,15 +1,58 @@
-node_modules/
-build/
-dist/
-coverage/
-.DS_Store
-*.log
-.env*
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+dist-electron
+dist-ssr
+*.local
+
+# Capacitor platforms (auto-generated)
+android
+ios
+
+# Environment files
+.env
+.env.local
+.env.*.local
 !.env.example
-push_code.ts
-check_commit_files.ts
-check_cwd.ts
-check_reflog.ts
-restore_files.ts
-restore_to_initial.ts
-push_code_clean.ts
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing
+coverage
+.nyc_output
+
+# Electron
+out/
+
+# Firebase
+.firebase/
+
+# Misc
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
