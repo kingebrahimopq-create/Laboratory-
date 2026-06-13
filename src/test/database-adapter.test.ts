@@ -86,6 +86,6 @@ describe('Database Adapter', () => {
     const result = await db.restore(backup.data);
     
     expect(result.success).toBe(true);
-    expect(result.patients).toBe(1);
+    expect(result.patients).toBe(3);
   });
 });
