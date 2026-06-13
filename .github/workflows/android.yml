@@ -39,11 +39,11 @@ jobs:
         npx cap add android || true
         npx cap sync android
 
-    - name: Build Android APK
+    - name: Build Android APK (Debug)
       working-directory: ./android
       run: |
         chmod +x ./gradlew
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload Android APK
       uses: actions/upload-artifact@v4
