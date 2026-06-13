@@ -22,10 +22,8 @@
     "installerIcon": "public/icon.ico",
     "uninstallerIcon": "public/icon.ico",
     "installerHeaderIcon": "public/icon.ico",
-    "createUninstaller": true,
     "displayLanguageSelector": true,
-    "multiLanguageInstaller": true,
-    "languages": ["English", "Arabic"]
+    "multiLanguageInstaller": true
   },
   "portable": {
     "artifactName": "MyLab-LIMS-Portable-${version}.${ext}"
