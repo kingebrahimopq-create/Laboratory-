@@ -564,7 +564,7 @@ export default function App() {
   return (
     <>
       <ToastContainer />
-      <div className="min-h-screen bg-slate-50/50 flex flex-col antialiased text-slate-800" dir="rtl">
+      <div className="min-h-screen bg-slate-50/50 flex flex-col antialiased text-slate-800" dir="rtl" role="application">
         {/* Main Container Wrapper */}
         <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
         

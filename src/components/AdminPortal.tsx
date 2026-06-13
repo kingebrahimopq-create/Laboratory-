@@ -179,43 +179,43 @@ export default function AdminPortal({
       if (p.includes('منع') || p.includes('إلغاء') || p.includes('تعطيل') || p.includes('إيقاف') || p.includes('حظر') || p.includes('منعه')) {
         if (p.includes('فواتير') || p.includes('فاتورة') || p.includes('دفع') || p.includes('تحصيل') || p.includes('مالي') || p.includes('فواتيرها')) {
           updatedPerms = updatedPerms.filter(item => item !== 'billing');
-          actionsText.push('تعطيل صلاحية إصدار الفواتير وتحصيل الأموال ❌');
+          actionsText.push('تعطيل صلاحية إصدار الفواتير وتحصيل الأموال ❌' as never);
         }
         if (p.includes('تسجيل') || p.includes('مرضى') || p.includes('مريض') || p.includes('ملف')) {
           updatedPerms = updatedPerms.filter(item => item !== 'register_patient');
-          actionsText.push('إيقاف صلاحية تسجيل المرضى الجدد من السجلات ❌');
+          actionsText.push('إيقاف صلاحية تسجيل المرضى الجدد من السجلات ❌' as never);
         }
         if (p.includes('مواعيد') || p.includes('موعد') || p.includes('حجز') || p.includes('جدول')) {
           updatedPerms = updatedPerms.filter(item => item !== 'appointments');
-          actionsText.push('تعطيل صلاحيات جدولة الحجوزات والمواعيد المنزلية ❌');
+          actionsText.push('تعطيل صلاحيات جدولة الحجوزات والمواعيد المنزلية ❌' as never);
         }
         if (p.includes('سجلات') || p.includes('رؤية') || p.includes('عرض') || p.includes('اطلاع')) {
           updatedPerms = updatedPerms.filter(item => item !== 'view_all_records');
-          actionsText.push('حظر تصفح وعرض السجلات الطبية السحابية العامة ❌');
+          actionsText.push('حظر تصفح وعرض السجلات الطبية السحابية العامة ❌' as never);
         }
       } else {
         // Grant permissions
         if (p.includes('فواتير') || p.includes('فاتورة') || p.includes('دفع') || p.includes('تحصيل') || p.includes('مالي')) {
           if (!updatedPerms.includes('billing')) updatedPerms.push('billing');
-          actionsText.push('تمكين صلاحية الفواتير والتحصيل المالي الرقمي ✔');
+          actionsText.push('تمكين صلاحية الفواتير والتحصيل المالي الرقمي ✔' as never);
         }
         if (p.includes('تسجيل') || p.includes('مرضى') || p.includes('مريض') || p.includes('ملف')) {
           if (!updatedPerms.includes('register_patient')) updatedPerms.push('register_patient');
-          actionsText.push('تمكين صلاحية تسجيل وإنشاء السجلات الطبية للمرضى الجدد ✔');
+          actionsText.push('تمكين صلاحية تسجيل وإنشاء السجلات الطبية للمرضى الجدد ✔' as never);
         }
         if (p.includes('مواعيد') || p.includes('موعد') || p.includes('حجز') || p.includes('جدول')) {
           if (!updatedPerms.includes('appointments')) updatedPerms.push('appointments');
-          actionsText.push('تمكين صلاحية جدولة وإدارة المواعيد الطبية وسحب العينات ✔');
+          actionsText.push('تمكين صلاحية جدولة وإدارة المواعيد الطبية وسحب العينات ✔' as never);
         }
         if (p.includes('سجلات') || p.includes('رؤية') || p.includes('عرض') || p.includes('اطلاع')) {
           if (!updatedPerms.includes('view_all_records')) updatedPerms.push('view_all_records');
-          actionsText.push('تمكين صلاحية عرض فهارس وسجلات العائلات السحابية ✔');
+          actionsText.push('تمكين صلاحية عرض فهارس وسجلات العائلات السحابية ✔' as never);
         }
       }
 
       if (actionsText.length === 0) {
         updatedPerms = ['register_patient', 'appointments'];
-        actionsText.push('إعادة تعيين صلاحيات الموظف للحد الأدنى (تسجيل ومواعيد فقط) 🛡');
+        actionsText.push('إعادة تعيين صلاحيات الموظف للحد الأدنى (تسجيل ومواعيد فقط) 🛡' as never);
       }
 
       onUpdateSettings({

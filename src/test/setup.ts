@@ -1,4 +1,4 @@
-import { expect } from 'vitest';
+import { expect, vi, beforeEach, afterEach } from 'vitest';
 import * as matchers from '@testing-library/jest-dom/matchers';
 
 // Extend Vitest expect with jest-dom matchers

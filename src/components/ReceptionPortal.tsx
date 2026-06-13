@@ -129,7 +129,7 @@ export default function ReceptionPortal({
     }
 
     // Default empty parameter list based on templates
-    let defaultParams = [];
+    let defaultParams: { name: string; nameAr: string; unit: string; minNormal: number; maxNormal: number }[] = [];
     if (testTypeSelect === 'OTHER') {
       defaultParams = [{
         name: 'General Diagnostic Level',
