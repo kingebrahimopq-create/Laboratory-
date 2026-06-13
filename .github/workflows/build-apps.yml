@@ -35,7 +35,7 @@ jobs:
         run: npm run build
 
       - name: Upload Web Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MyLab-Web-App
           path: dist/
@@ -68,7 +68,7 @@ jobs:
           NODE_ENV: production
 
       - name: Upload Windows Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MyLab-Windows-App
           path: dist-electron/*.exe
@@ -127,14 +127,14 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon || true
 
       - name: Upload Android Debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MyLab-Android-Debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: warn
 
       - name: Upload Android Release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: hashFiles('android/app/build/outputs/apk/release/app-release-unsigned.apk') != ''
         with:
           name: MyLab-Android-Release
