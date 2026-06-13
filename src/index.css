@@ -1,7 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+:root {
   --font-sans: "Cairo", "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   
@@ -187,45 +190,15 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-primary {
-  @extend .btn;
-  background-color: #0d9488;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #0f766e;
-}
-
-.btn-primary:active {
-  transform: scale(0.95);
+  @apply btn bg-[#0d9488] text-white hover:bg-[#0f766e] active:scale-95;
 }
 
 .btn-secondary {
-  @extend .btn;
-  background-color: #e2e8f0;
-  color: #334155;
-}
-
-.btn-secondary:hover {
-  background-color: #cbd5e1;
-}
-
-.btn-secondary:active {
-  transform: scale(0.95);
+  @apply btn bg-[#e2e8f0] text-[#334155] hover:bg-[#cbd5e1] active:scale-95;
 }
 
 .btn-danger {
-  @extend .btn;
-  background-color: #dc2626;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #b91c1c;
-}
-
-.btn-danger:active {
-  transform: scale(0.95);
+  @apply btn bg-[#dc2626] text-white hover:bg-[#b91c1c] active:scale-95;
 }
 
 /* Table styling */
