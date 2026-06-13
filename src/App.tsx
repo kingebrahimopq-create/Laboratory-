@@ -5,7 +5,8 @@ import {
   Building2, Laptop, Network, Clock, ShieldCheck, Smartphone, Cpu, Activity,
   UserPlus, User, ClipboardList, Database, Receipt, Coins, Settings,
   ArrowRightLeft, AlertCircle, Info, HeartPulse, CheckSquare, ScanBarcode, LogOut,
-  Fingerprint, Sparkles, Send, ShieldAlert, CheckCircle2, Shield, Trash2, HelpCircle, Microscope, Printer, Edit3, FileText, Wifi, Calendar, Sliders
+  Fingerprint, Sparkles, Send, ShieldAlert, CheckCircle2, Shield, Trash2, HelpCircle, Microscope, Printer, Edit3, FileText, Wifi, Calendar, Sliders,
+  Cloud, CloudOff, RefreshCw, Download, Upload, Zap, Radio, Signal
 } from 'lucide-react';
 
 // Import child views
@@ -23,6 +24,17 @@ import { initAuth, googleSignIn, logout, getAccessToken } from './auth';
 import { getPrinterService, PrinterConnectionType } from './services/printer-service';
 import { useToast } from './components/ui/Toast';
 import { DatabaseAdapter, StorageType } from './db/database-adapter';
+import {
+  syncDataToDrive,
+  isOnline,
+  getSyncStatus,
+  getPendingSyncsCount,
+  processPendingSyncs,
+  clearUserInfo,
+  onConnectionChange,
+  setAutoSyncDataProvider,
+  signInWithGoogle
+} from './services/drive-sync-service';
 
 export default function App() {
   // Toast notification system
@@ -73,6 +85,12 @@ export default function App() {
   const [googleBackupProgress, setGoogleBackupProgress] = useState<number>(0);
   const [googleBackupStatus, setGoogleBackupStatus] = useState<string>('');
 
+  // --- ONLINE/OFFLINE SYNC STATE ---
+  const [isConnected, setIsConnected] = useState<boolean>(isOnline());
+  const [pendingSyncs, setPendingSyncs] = useState<number>(0);
+  const [syncStatusMessage, setSyncStatusMessage] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
   // --- SIDEBAR COUNTER WIDGET ---
   const [showSidebarWidget, setShowSidebarWidget] = useState<boolean>(true);
   const [showSidebarPanel, setShowSidebarPanel] = useState<boolean>(false);
@@ -96,13 +114,55 @@ export default function App() {
       }
     };
     initPrinter();
-    
+
     // Initialize database adapter
     DatabaseAdapter.create(StorageType.LOCAL);
-    
+
     return () => {
       printerService.disconnect();
     };
+  }, []);
+
+  // --- ONLINE/OFFLINE LISTENER ---
+  useEffect(() => {
+    // Set auto-sync data provider
+    setAutoSyncDataProvider(() => ({
+      patients: ClinicalDatabase.getPatients(),
+      appointments: ClinicalDatabase.getAppointments(),
+      tests: ClinicalDatabase.getTests(),
+      timestamp: new Date().toISOString()
+    }));
+
+    // Listen for connection changes
+    const unsubscribe = onConnectionChange((online) => {
+      setIsConnected(online);
+      if (online) {
+        setSyncStatusMessage('تم استعادة الاتصال - جاري المزامنة التلقائية...');
+        // Process pending syncs
+        processPendingSyncs(() => ({
+          patients: ClinicalDatabase.getPatients(),
+          appointments: ClinicalDatabase.getAppointments(),
+          tests: ClinicalDatabase.getTests(),
+          timestamp: new Date().toISOString()
+        })).then((count) => {
+          if (count > 0) {
+            setSyncStatusMessage(`تمت مزامنة ${count} نسخة احتياطية معلقة بنجاح!`);
+            success(`تمت مزامنة ${count} نسخة احتياطية معلقة بنجاح!`);
+          } else {
+            setSyncStatusMessage('');
+          }
+          setPendingSyncs(getPendingSyncsCount());
+        });
+      } else {
+        warning('⚠️ انقطع الاتصال بالإنترنت - سيتم حفظ البيانات محلياً والمزامنة لاحقاً');
+        setSyncStatusMessage('وضع عدم الاتصال - العمل محلي');
+      }
+    });
+
+    // Check pending syncs count
+    setPendingSyncs(getPendingSyncsCount());
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -467,7 +527,7 @@ export default function App() {
     if (!googleUser) return;
     setGoogleBackupProgress(10);
     setGoogleBackupStatus('معايرة جداول المرضى والفحوص الطبية وتجهيز بنية JSON...');
-    
+
     const backupData = {
       patients,
       appointments,
@@ -475,14 +535,14 @@ export default function App() {
       timestamp: new Date().toISOString()
     };
     const fileContent = JSON.stringify(backupData, null, 2);
-    
+
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error("No access token");
 
       setGoogleBackupProgress(40);
       setGoogleBackupStatus('جاري الاتصال بـ Google Drive واستدعاء واجهة الرفع...');
-      
+
       const metadata = {
         name: `MyLab_GDrive_Backup_${new Date().toISOString().split('T')[0]}.json`,
         mimeType: 'application/json'
@@ -523,6 +583,139 @@ export default function App() {
       setGoogleBackupProgress(0);
       setGoogleBackupStatus('❌ فشلت عملية النسخ الاحتياطي!');
     }
+  };
+
+  // === VIBRANT GOOGLE DRIVE SYNC HANDLERS ===
+  const handleVibrantGoogleSignIn = async () => {
+    setIsSyncing(true);
+    setSyncStatusMessage('جاري الاتصال والتحقق من سيرفرات Google OAuth...');
+    try {
+      // Try Electron native first
+      if (typeof window !== 'undefined' && (window as any).electronAPI) {
+        const result = await (window as any).electronAPI.googleSignIn();
+        if (result?.success) {
+          setGoogleUser({
+            name: result.name || 'مستخدم Google',
+            email: result.email || '',
+            avatar: result.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+          });
+          setSyncStatusMessage('✓ تم تسجيل الدخول الآمن بحساب Google بنجاح!');
+          success('تم تسجيل الدخول بنجاح!');
+        } else {
+          throw new Error(result?.error || 'فشل تسجيل الدخول');
+        }
+      } else {
+        // Fallback to Firebase Auth
+        await handleGoogleSignInSimulate();
+      }
+    } catch (err) {
+      console.error(err);
+      // Demo mode fallback
+      setGoogleUser({
+        name: 'كمال المحلاوي (جوجل ديمو)',
+        email: 'kamal.mahlawi.demo@gmail.com',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+      });
+      setSyncStatusMessage('✓ تم تفعيل وضع العرض التجريبي');
+      success('تم تسجيل الدخول بوضع العرض التجريبي');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatusMessage(''), 3000);
+    }
+  };
+
+  const handleVibrantGoogleBackup = async () => {
+    if (!googleUser) return;
+    setIsSyncing(true);
+    setGoogleBackupProgress(15);
+    setSyncStatusMessage('جاري تحضير البيانات والمزامنة مع Google Drive...');
+
+    const backupData = {
+      patients,
+      appointments,
+      tests,
+      settings,
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      setGoogleBackupProgress(40);
+      const result = await syncDataToDrive(backupData);
+
+      if (result.success) {
+        setGoogleBackupProgress(100);
+        setSyncStatusMessage(result.message);
+        success('تم رفع النسخة الاحتياطية بنجاح!');
+      } else {
+        setSyncStatusMessage(result.message);
+        if (!isOnline()) {
+          warning('تم حفظ البيانات للمزامنة اللاحقة');
+        } else {
+          error('فشلت المزامنة');
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setSyncStatusMessage(`❌ خطأ: ${err.message || 'فشلت المزامنة'}`);
+      error('فشلت عملية النسخ الاحتياطي');
+    } finally {
+      setGoogleBackupProgress(0);
+      setIsSyncing(false);
+      setPendingSyncs(getPendingSyncsCount());
+      setTimeout(() => setSyncStatusMessage(''), 5000);
+    }
+  };
+
+  const handleVibrantGoogleRestore = async () => {
+    setIsSyncing(true);
+    setSyncStatusMessage('جاري البحث عن النسخ الاحتياطية على Google Drive...');
+    try {
+      // Check if Electron API available
+      if (typeof window !== 'undefined' && (window as any).electronAPI) {
+        const backups = await (window as any).electronAPI.listDriveBackups();
+        if (backups && backups.length > 0) {
+          const latestBackup = backups[0];
+          setSyncStatusMessage(`جاري استعادة: ${latestBackup.name}...`);
+          const data = await (window as any).electronAPI.downloadFromDrive(latestBackup.id);
+          if (data) {
+            // Restore data
+            if (data.patients) {
+              ClinicalDatabase.saveAllPatients(data.patients);
+              setPatients(data.patients);
+            }
+            if (data.appointments) {
+              ClinicalDatabase.saveAllAppointments(data.appointments);
+              setAppointments(data.appointments);
+            }
+            if (data.tests) {
+              ClinicalDatabase.saveAllTests(data.tests);
+              setTests(data.tests);
+            }
+            setSyncStatusMessage('✓ تم استعادة البيانات بنجاح!');
+            success('تم استعادة البيانات بنجاح!');
+          }
+        } else {
+          setSyncStatusMessage('لا توجد نسخ احتياطية على Drive');
+        }
+      } else {
+        setSyncStatusMessage('وظيفة الاستعادة متاحة في وضع سطح المكتب');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setSyncStatusMessage(`❌ خطأ: ${err.message || 'فشلت الاستعادة'}`);
+      error('فشلت استعادة البيانات');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatusMessage(''), 5000);
+    }
+  };
+
+  const handleDisconnectGoogle = () => {
+    clearUserInfo();
+    setGoogleUser(null);
+    setSyncStatusMessage('✓ تم فصل الاتصال بحساب Google');
+    info('تم تسجيل الخروج من Google Drive');
+    setTimeout(() => setSyncStatusMessage(''), 3000);
   };
 
   // Bio custom footprint registry
@@ -614,6 +807,17 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-4">
+                  {/* Connection Status */}
+                  <div className={`hidden sm:flex items-center gap-1.5 ${isConnected ? 'text-emerald-600' : 'text-amber-600'}`} title={isConnected ? 'متصل بالإنترنت' : 'غير متصل'}>
+                    <Radio className={`w-3.5 h-3.5 ${isConnected ? 'animate-pulse' : ''}`} />
+                    <span className="text-[10px] font-bold">{isConnected ? 'متصل' : 'محلي'}</span>
+                    {pendingSyncs > 0 && (
+                      <span className="badge-vibrant badge-vibrant-warning text-[9px] px-1.5 py-0.5">
+                        {pendingSyncs}
+                      </span>
+                    )}
+                  </div>
+
                   {/* Printer Status Indicator */}
                   {printerStatus.connected && (
                     <div className="hidden sm:flex items-center gap-1.5 text-emerald-600" title={`Printer: ${printerStatus.type}`}>
@@ -621,7 +825,23 @@ export default function App() {
                       <span className="text-[10px] font-bold">متصل</span>
                     </div>
                   )}
-                  
+
+                  {/* Google Drive Connect Button */}
+                  {!googleUser ? (
+                    <button
+                      onClick={() => setShowCalibrationPopout(true)}
+                      className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] transition-all cursor-pointer shadow-md hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5"
+                    >
+                      <Cloud className="w-3.5 h-3.5" />
+                      <span>توصيل Drive</span>
+                    </button>
+                  ) : (
+                    <div className="hidden sm:flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1">
+                      <img src={googleUser.avatar} alt="" className="w-5 h-5 rounded-full border border-green-400" />
+                      <Cloud className="w-3 h-3 text-green-600 animate-pulse" />
+                    </div>
+                  )}
+
                   <div className="text-right hidden sm:block">
                     <span className="text-[10px] font-bold text-slate-400 block">الهوية الطبية النشطة</span>
                     <span className="text-xs font-black text-slate-800 truncate block max-w-[130px]">
@@ -963,182 +1183,312 @@ export default function App() {
       {/* --- FLOATING OVERLAY MODAL NAVIGATION --- */}
       {/* ========================================== */}
 
-      {/* 1. PROFILE AND LICENCE POPUP OVERLAY */}
+      {/* 1. PROFILE AND LICENCE POPUP OVERLAY - VIBRANT REDESIGN */}
       {showProfilePopout && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn" dir="rtl">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl space-y-6 animate-scaleIn border border-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" />
-                <h3 className="text-base font-black text-slate-900">الملف الشخصي وترخيص المنشأة الطبية</h3>
-              </div>
-              <button 
-                onClick={() => setShowProfilePopout(false)}
-                className="text-slate-400 hover:text-slate-800 text-xs bg-slate-100 rounded-lg px-2.5 py-1 font-bold"
-              >
-                إغلاق ×
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-fadeIn" dir="rtl">
+          <div className="modal-light-vibrant w-full max-w-lg shadow-2xl animate-scaleIn overflow-hidden relative">
+            {/* Animated gradient header line */}
+            <div className="divider-vibrant" />
 
-            <div className="space-y-4 text-xs text-slate-650">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">اسم المعمل باللغة العربية (يظهر بالأعلى وفي التقارير):</label>
-                <input
-                  type="text"
-                  value={settings.labNameAr || "معمل النيل للتحاليل الطبية والتشخيص"}
-                  onChange={(e) => handleUpdateSettings({ ...settings, labNameAr: e.target.value, clinicName: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200.5 rounded-xl px-3 py-2 text-xs font-bold outline-none text-right"
-                />
+            <div className="relative z-10 p-6 space-y-5">
+              {/* Header with vibrant styling */}
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-base font-black text-gradient-vibrant">الملف الشخصي وترخيص المنشأة الطبية</h3>
+                </div>
+                <button
+                  onClick={() => setShowProfilePopout(false)}
+                  className="text-slate-400 hover:text-slate-800 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5 font-bold transition-all hover:scale-105 border border-slate-200"
+                >
+                  إغلاق ×
+                </button>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">اسم المعمل باللغة الإنجليزية:</label>
-                <input
-                  type="text"
-                  value={settings.labNameEn || "Nile Clinical Laboratory & Diagnostics"}
-                  onChange={(e) => handleUpdateSettings({ ...settings, labNameEn: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200.5 rounded-xl px-3 py-2 text-xs font-bold outline-none text-left font-mono"
-                />
+              <div className="space-y-4 text-xs">
+                {/* Lab Name Arabic */}
+                <div className="card-vibrant">
+                  <label className="block font-bold text-slate-700 mb-2 text-sm">اسم المعمل باللغة العربية (يظهر بالأعلى وفي التقارير):</label>
+                  <input
+                    type="text"
+                    value={settings.labNameAr || "معمل النيل للتحاليل الطبية والتشخيص"}
+                    onChange={(e) => handleUpdateSettings({ ...settings, labNameAr: e.target.value, clinicName: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none text-right input-vibrant transition-all focus:shadow-lg focus:shadow-blue-500/10"
+                  />
+                </div>
+
+                {/* Lab Name English */}
+                <div className="card-vibrant">
+                  <label className="block font-bold text-slate-700 mb-2 text-sm">اسم المعمل باللغة الإنجليزية:</label>
+                  <input
+                    type="text"
+                    value={settings.labNameEn || "Nile Clinical Laboratory & Diagnostics"}
+                    onChange={(e) => handleUpdateSettings({ ...settings, labNameEn: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none text-left font-mono input-vibrant transition-all focus:shadow-lg focus:shadow-blue-500/10"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div className="card-vibrant">
+                  <label className="block font-bold text-slate-700 mb-2 text-sm">رقم هاتف المعمل:</label>
+                  <input
+                    type="text"
+                    value={settings.labPhone || "0102919381"}
+                    onChange={(e) => handleUpdateSettings({ ...settings, labPhone: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none text-left font-mono input-vibrant transition-all focus:shadow-lg focus:shadow-blue-500/10"
+                  />
+                </div>
+
+                {/* Doctor Name */}
+                <div className="card-vibrant">
+                  <label className="block font-bold text-slate-700 mb-2 text-sm">المدير الطبي المسؤول الطبيب:</label>
+                  <input
+                    type="text"
+                    value={settings.doctorName}
+                    onChange={(e) => handleUpdateSettings({ ...settings, doctorName: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none text-right input-vibrant transition-all focus:shadow-lg focus:shadow-blue-500/10"
+                  />
+                </div>
+
+                {/* License */}
+                <div className="card-vibrant">
+                  <label className="block font-bold text-slate-700 mb-2 text-sm">رقم الترخيص المهني (MOH License) - اختياري:</label>
+                  <input
+                    type="text"
+                    placeholder="MD-74092-2026 (متروك اختياري بقرار الطبيب)"
+                    value={settings.doctorLicense}
+                    onChange={(e) => handleUpdateSettings({ ...settings, doctorLicense: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono outline-none text-left input-vibrant transition-all focus:shadow-lg focus:shadow-blue-500/10"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">يُسمح بتركه خالياً ليظهر التوقيع بصفته الإكلينيكية المستقلة.</p>
+                </div>
+
+                {/* License Info Box */}
+                <div className="relative overflow-hidden rounded-2xl border border-blue-200/60 p-4">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-purple-50/30" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="w-4 h-4 text-blue-600" />
+                      <span className="font-bold text-blue-900 text-sm">تفاصيل صلاحية الحساب والبروتوكول:</span>
+                    </div>
+                    <p className="text-[12px] text-slate-600 leading-relaxed">
+                      الحساب يملك ترخيص مدى الحياة للتوليد والتصديق على صورة الدم الهيموجلوبين، lipid profile، والتحاليل التفاعلية بنسبة حماية مطلقة.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">رقم هاتف المعمل:</label>
-                <input
-                  type="text"
-                  value={settings.labPhone || "0102919381"}
-                  onChange={(e) => handleUpdateSettings({ ...settings, labPhone: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200.5 rounded-xl px-3 py-2 text-xs font-bold outline-none text-left font-mono"
-                />
+              {/* Footer with sync status */}
+              <div className="pt-4 border-t border-slate-200/80 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-green-500 animate-connected' : 'bg-red-500 animate-offline'}`} />
+                  <span className="text-[11px] text-slate-500 font-bold">
+                    {isConnected ? 'حفظ محلي - مزامنة سحابية نشطة' : 'حفظ محلي - لا يحتاج إنترنت'}
+                  </span>
+                  {pendingSyncs > 0 && (
+                    <span className="badge-vibrant badge-vibrant-warning mr-2">
+                      {pendingSyncs} معلق
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => { setShowProfilePopout(false); }}
+                  className="btn-vibrant-teal text-xs px-6 py-2.5"
+                >
+                  حفظ وإغلاق
+                </button>
               </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">المدير الطبي المسؤول الطبيب:</label>
-                <input
-                  type="text"
-                  value={settings.doctorName}
-                  onChange={(e) => handleUpdateSettings({ ...settings, doctorName: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200.5 rounded-xl px-3 py-2 text-xs font-bold outline-none text-right"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">رقم الترخيص المهني (MOH License) - اختياري:</label>
-                <input
-                  type="text"
-                  placeholder="MD-74092-2026 (متروك اختياري بقرار الطبيب)"
-                  value={settings.doctorLicense}
-                  onChange={(e) => handleUpdateSettings({ ...settings, doctorLicense: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200.5 rounded-xl px-3 py-2 text-xs font-mono outline-none text-left"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">يُسمح بتركه خالياً ليظهر التوقيع بصفته الإكلينيكية المستقلة.</p>
-              </div>
-
-              <div className="bg-blue-50/50 p-4 border border-blue-100 rounded-2xl">
-                <span className="font-bold text-blue-900 block mb-1">تفاصيل صلاحية الحساب والبروتوكول:</span>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
-                  الحساب يملك ترخيص مدى الحياة للتوليد والتصديق على صورة الدم الهيموجلوبين، lipid profile، والتحاليل التفاعلية بنسبة حماية مطلقة.
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
-              <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-connected inline-block"></span>
-                حفظ محلي - لا يحتاج إنترنت
-              </span>
-              <button 
-                onClick={() => { setShowProfilePopout(false); }}
-                className="bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer transition-all"
-              >
-                حفظ وإغلاق
-              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 2. CALIBRATION AND GOOGLE CLOUD BACKUP GEAR (ترس معايرة ليمس) */}
+      {/* 2. CALIBRATION AND GOOGLE CLOUD BACKUP GEAR (ترس معايرة ليمس) - VIBRANT REDESIGN */}
       {showCalibrationPopout && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn" dir="rtl">
-          <div className="bg-slate-950 text-slate-100 rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl space-y-6 animate-scaleIn border border-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Settings className="w-5 h-5 text-indigo-400 animate-spin" />
-                <h3 className="text-base font-black text-white">ترس المعايرة ومزامنة Google Cloud السريعة</h3>
-              </div>
-              <button 
-                onClick={() => setShowCalibrationPopout(false)}
-                className="text-slate-400 hover:text-white text-xs bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1"
-              >
-                إغلاق ×
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-fadeIn" dir="rtl">
+          <div className="modal-dark-vibrant w-full max-w-md shadow-2xl animate-scaleIn overflow-hidden relative">
+            {/* Animated background particles */}
+            <div className="particles-bg absolute inset-0 pointer-events-none" />
 
-            {/* Google Sign-in Auth */}
-            <div className="space-y-4 text-xs">
-              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
-                <span className="font-bold text-indigo-400 block pb-1 border-b border-slate-800">النسخ الاحتياطي السحابي عبر حساب Google</span>
+            <div className="relative z-10 p-6 space-y-5">
+              {/* Header with vibrant gradient */}
+              <div className="flex items-center justify-between border-b border-slate-700/50 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 animate-gradient shadow-lg shadow-blue-500/20">
+                    <Settings className="w-5 h-5 text-white animate-spin" style={{ animationDuration: '8s' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white">ترس المعايرة ومزامنة السريعة</h3>
+                    <span className="text-[10px] font-bold text-gradient-teal">Google Cloud</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCalibrationPopout(false)}
+                  className="text-slate-400 hover:text-white text-xs bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-1.5 font-bold transition-all hover:scale-105"
+                >
+                  إغلاق ×
+                </button>
+              </div>
+
+              {/* Connection Status Bar */}
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isConnected ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+                <span className={`status-dot ${isConnected ? 'status-dot-online' : 'status-dot-offline'}`} />
+                <span className={`text-[11px] font-bold ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+                  {isConnected ? 'متصل بالإنترنت' : 'غير متصل - العمل محلي'}
+                </span>
+                {pendingSyncs > 0 && (
+                  <span className="badge-vibrant badge-vibrant-warning mr-auto">
+                    <CloudOff className="w-3 h-3" />
+                    {pendingSyncs} مزامنة معلقة
+                  </span>
+                )}
+              </div>
+
+              {/* Google Sign-in Section */}
+              <div className="card-vibrant-dark space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center">
+                    <Cloud className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="font-bold text-blue-400">النسخ الاحتياطي السحابي عبر حساب Google</span>
+                </div>
+
                 <p className="text-[11px] text-slate-400 leading-relaxed">
                   بدلاً من استخدام رموز التشفير اليدوية المبهمة، يتيح لك النظام الآن تسجيل الدخول بحساب Google الآمن وعمل مزامنة فورية ومكالمة لملفات المرضى وقاعدة البيانات مباشرة على Google Drive مجاناً!
                 </p>
 
                 {!googleUser ? (
                   <div className="space-y-3">
-                    <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                    <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
                       <p className="text-[11px] text-slate-400 leading-relaxed">
                         سجل الدخول بحساب Google للمزامنة السحابية. لا حاجة لنسخ رموز Token يدوياً.
                       </p>
                     </div>
+
+                    {/* VIBRANT Google Sign-in Button */}
                     <button
-                      onClick={handleGoogleSignInSimulate}
-                      className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-md animate-gradient"
+                      onClick={handleVibrantGoogleSignIn}
+                      className="btn-google-connect w-full py-3.5 px-4 text-sm"
+                      disabled={isSyncing}
                     >
-                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                        <path fill="#FFFFFF" d="M12.2 10.2v3.7h6.8c-.3 1.8-2 5.1-6.8 5.1-4.1 0-7.5-3.4-7.5-7.5s3.4-7.5 7.5-7.5c2.4 0 4 .9 4.9 1.8l2.9-2.8C18.1 1.4 15.3 0 12.2 0 5.5 0 0 5.5 0 12.2S5.5 24.4 12.2 24.4c7 0 11.6-4.9 11.6-11.8 0-.8-.1-1.4-.2-2.4H12.2z"/>
-                      </svg>
-                      <span>تسجيل الدخول بـ Google OAuth</span>
+                      {isSyncing ? (
+                        <RefreshCw className="w-4 h-4 animate-spin-fast" />
+                      ) : (
+                        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                          <path fill="#FFFFFF" d="M12.2 10.2v3.7h6.8c-.3 1.8-2 5.1-6.8 5.1-4.1 0-7.5-3.4-7.5-7.5s3.4-7.5 7.5-7.5c2.4 0 4 .9 4.9 1.8l2.9-2.8C18.1 1.4 15.3 0 12.2 0 5.5 0 0 5.5 0 12.2S5.5 24.4 12.2 24.4c7 0 11.6-4.9 11.6-11.8 0-.8-.1-1.4-.2-2.4H12.2z"/>
+                        </svg>
+                      )}
+                      <span>{isSyncing ? 'جاري الاتصال...' : 'تسجيل الدخول بـ Google OAuth'}</span>
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-3 pt-1">
-                    <div className="flex items-center gap-3 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                      <img src={googleUser.avatar} alt="avatar" className="w-10 h-10 rounded-full border border-teal-500" />
-                      <div className="text-right">
-                        <span className="font-bold text-white block">{googleUser.name}</span>
+                    {/* User Info Card */}
+                    <div className="flex items-center gap-3 bg-gradient-to-r from-slate-800 to-slate-900 p-3 rounded-xl border border-slate-700/50">
+                      <img src={googleUser.avatar} alt="avatar" className="w-12 h-12 rounded-full border-2 border-teal-400 shadow-lg shadow-teal-500/20" />
+                      <div className="text-right flex-1">
+                        <span className="font-bold text-white block text-sm">{googleUser.name}</span>
                         <span className="text-[10px] text-slate-400 font-mono block">{googleUser.email}</span>
                       </div>
+                      <button
+                        onClick={handleDisconnectGoogle}
+                        className="text-slate-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition-all"
+                        title="فصل الاتصال"
+                      >
+                        <CloudOff className="w-4 h-4" />
+                      </button>
                     </div>
 
+                    {/* VIBRANT Sync Button */}
                     <button
-                      onClick={handleRunGoogleBackup}
-                      className="w-full bg-teal-600 hover:bg-teal-500 text-white font-extrabold py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      onClick={handleVibrantGoogleBackup}
+                      disabled={isSyncing || !isConnected}
+                      className="btn-vibrant-teal w-full py-3.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Database className="w-4 h-4 text-white" />
-                      <span>بدء مزامنة السحابة ورفع لـ Google Drive ☁️</span>
+                      {isSyncing ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin-fast" />
+                          <span>جاري المزامنة...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          <span>بدء مزامنة السحابة ورفع لـ Google Drive</span>
+                          <Cloud className="w-4 h-4 animate-bounce-subtle" />
+                        </>
+                      )}
+                    </button>
+
+                    {/* Download Button */}
+                    <button
+                      onClick={handleVibrantGoogleRestore}
+                      disabled={isSyncing || !isConnected}
+                      className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-blue-500 text-slate-300 hover:text-white font-extrabold py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-xs disabled:opacity-50"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>استعادة نسخة احتياطية من Drive</span>
                     </button>
                   </div>
                 )}
 
+                {/* Sync Status Messages */}
+                {syncStatusMessage && (
+                  <div className={`p-3 rounded-xl border text-right ${syncStatusMessage.includes('✓') ? 'border-green-500/30 bg-green-500/5' : syncStatusMessage.includes('❌') ? 'border-red-500/30 bg-red-500/5' : 'border-yellow-500/30 bg-yellow-500/5'}`}>
+                    <p className={`text-[11px] font-bold leading-relaxed ${syncStatusMessage.includes('✓') ? 'text-green-400' : syncStatusMessage.includes('❌') ? 'text-red-400' : 'text-yellow-400'}`}>
+                      {syncStatusMessage}
+                    </p>
+                  </div>
+                )}
+
+                {/* Progress Bar */}
+                {googleBackupProgress > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] font-bold">
+                      <span className="text-teal-400">{googleBackupProgress}%</span>
+                      <span className="text-slate-400">جاري الرفع...</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="progress-vibrant h-full rounded-full transition-all duration-300"
+                        style={{ width: `${googleBackupProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Google Backup Status */}
                 {googleBackupStatus && (
-                  <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-right mt-2 animate-pulse">
-                    <p className="text-[10px] font-mono text-teal-400 leading-relaxed font-bold">{googleBackupStatus}</p>
-                    {googleBackupProgress > 0 && (
-                      <div className="w-full bg-slate-850 h-1 rounded-full mt-1.5 overflow-hidden">
-                        <div className="bg-gradient-to-r from-teal-400 to-indigo-400 h-1 transition-all duration-300" style={{ width: `${googleBackupProgress}%` }}></div>
-                      </div>
-                    )}
+                  <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-right">
+                    <p className="text-[11px] font-bold text-teal-400 leading-relaxed">{googleBackupStatus}</p>
+                  </div>
+                )}
+
+                {/* Offline Warning */}
+                {!isConnected && (
+                  <div className="p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 flex items-start gap-2">
+                    <Zap className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-yellow-400 leading-relaxed font-bold">
+                      وضع عدم الاتصال: سيتم حفظ البيانات محلياً والمزامنة التلقائية عند استعادة الاتصال بالإنترنت.
+                    </p>
                   </div>
                 )}
               </div>
-            </div>
 
-            <div className="pt-2 border-t border-slate-800 flex justify-end">
-              <button 
-                onClick={() => setShowCalibrationPopout(false)}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl"
-              >
-                رجوع
-              </button>
+              {/* Footer */}
+              <div className="pt-2 border-t border-slate-700/50 flex justify-between items-center">
+                <div className="flex items-center gap-1.5">
+                  <Signal className="w-3.5 h-3.5 text-green-400" />
+                  <span className="text-[10px] text-slate-500 font-mono">MyLab Drive Sync v2.0</span>
+                </div>
+                <button
+                  onClick={() => setShowCalibrationPopout(false)}
+                  className="btn-vibrant-teal text-xs px-5 py-2"
+                >
+                  رجوع
+                </button>
+              </div>
             </div>
           </div>
         </div>

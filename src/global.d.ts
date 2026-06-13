@@ -39,6 +39,43 @@ declare global {
         biometric: boolean;
       };
     };
+    // Electron API for Google Drive integration
+    electronAPI?: {
+      googleSignIn: () => Promise<{
+        success: boolean;
+        name?: string;
+        email?: string;
+        avatar?: string;
+        accessToken?: string;
+        error?: string;
+      }>;
+      uploadToDrive: (options: { fileName: string; content: string }) => Promise<{
+        success: boolean;
+        fileId?: string;
+        message?: string;
+        error?: string;
+      }>;
+      downloadFromDrive: (fileId?: string) => Promise<any>;
+      listDriveBackups: () => Promise<Array<{
+        id: string;
+        name: string;
+        createdTime: string;
+        size: string;
+      }>>;
+      handleOAuthCallback: (code: string) => Promise<{ success: boolean; tokens?: any; error?: string }>;
+      getPlatform: () => Promise<{
+        platform: string;
+        version: string;
+        isPackaged: boolean;
+      }>;
+      openExternal: (url: string) => Promise<void>;
+      syncToDrive: (fileData: any) => Promise<{
+        success: boolean;
+        fileId?: string;
+        message?: string;
+        error?: string;
+      }>;
+    };
   }
 }
 
