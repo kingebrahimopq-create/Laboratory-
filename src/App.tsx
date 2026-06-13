@@ -5,7 +5,7 @@ import {
   Building2, Laptop, Network, Clock, ShieldCheck, Smartphone, Cpu, Activity,
   UserPlus, User, ClipboardList, Database, Receipt, Coins, Settings,
   ArrowRightLeft, AlertCircle, Info, HeartPulse, CheckSquare, ScanBarcode, LogOut,
-  Fingerprint, Sparkles, Send, ShieldAlert, CheckCircle2, Shield, Trash2, HelpCircle, Microscope, Printer, Edit3, FileText, Wifi
+  Fingerprint, Sparkles, Send, ShieldAlert, CheckCircle2, Shield, Trash2, HelpCircle, Microscope, Printer, Edit3, FileText, Wifi, Calendar, Sliders
 } from 'lucide-react';
 
 // Import child views
@@ -73,6 +73,10 @@ export default function App() {
   const [googleBackupProgress, setGoogleBackupProgress] = useState<number>(0);
   const [googleBackupStatus, setGoogleBackupStatus] = useState<string>('');
 
+  // --- SIDEBAR COUNTER WIDGET ---
+  const [showSidebarWidget, setShowSidebarWidget] = useState<boolean>(true);
+  const [showSidebarPanel, setShowSidebarPanel] = useState<boolean>(false);
+
   // --- MEDICAL SYSTEMS DISCOUNT RULE ---
   const [globalDiscountPercent, setGlobalDiscountPercent] = useState<number>(0);
 
@@ -118,12 +122,12 @@ export default function App() {
   }, []);
   const [discountCoupons, setDiscountCoupons] = useState<{ code: string; percent: number; label: string }[]>([]);
 
-  // --- LAB REPORT READER ASSISTANT (مساعد قراءة التحاليل) ---
+  // --- LAB REPORT READER ASSISTANT (مساعد قراءة ورقة التحليل) ---
   const [aiInput, setAiInput] = useState<string>('');
   const [aiTyping, setAiTyping] = useState<boolean>(false);
   const [showTestTypeSelector, setShowTestTypeSelector] = useState(false);
   const [aiFeed, setAiFeed] = useState<{ id: string; sender: 'ai' | 'user'; text: string; time: string }[]>(() => {
-    const saved = localStorage.getItem('lims_ai_chat_feed');
+    const saved = localStorage.getItem('lims_test_reader_feed');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -135,14 +139,14 @@ export default function App() {
       {
         id: 'msg-init',
         sender: 'ai',
-        text: 'مرحباً! أنا مساعدك لقراءة وتحليل نتائج التحاليل الطبية. يمكنني مساعدتك في:\n• شرح نتائج تحاليل CBC (صورة الدم الكاملة)\n• تفسير تحاليل LIPID (الدهون)\n• توضيح نتائج وظائف الكبد LIVER\n• شرح تحاليل السكر GLUCOSE\n• المقارنة بالقيم المرجعية الطبيعية\n\nاختر نوع التحليل أو اكتب سؤالك وسأساعدك في فهم نتائجك بشكل مبسط.',
+        text: 'مرحباً! أنا مساعدك لفهم نتائج التحاليل الطبية. يمكنني مساعدتك في:\n• شرح نتائج تحاليل CBC (صورة الدم الكاملة)\n• تفسير تحاليل LIPID (الدهون)\n• توضيح نتائج وظائف الكبد LIVER\n• شرح تحاليل السكر GLUCOSE\n• المقارنة بالقيم المرجعية الطبيعية\n\nاختر نوع التحليل أو اكتب سؤالك وسأساعدك في فهم نتائجك بشكل مبسط.',
         time: 'الآن'
       }
     ];
   });
 
   useEffect(() => {
-    localStorage.setItem('lims_ai_chat_feed', JSON.stringify(aiFeed));
+    localStorage.setItem('lims_test_reader_feed', JSON.stringify(aiFeed));
   }, [aiFeed]);
 
   // Test reading assistant knowledge base
@@ -687,6 +691,121 @@ export default function App() {
 
             </div>
 
+            {/* SIDEBAR COUNTER WIDGET - Quick Stats Bar */}
+            {showSidebarWidget && (
+              <div className="max-w-6xl mx-auto px-4 sm:pr-24 mb-4 animate-fadeIn">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => setShowSidebarPanel(!showSidebarPanel)}
+                    className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 transition-all text-xs font-bold"
+                    title="عرض التفاصيل"
+                  >
+                    <ClipboardList className="w-4 h-4 text-teal-600" />
+                    <span>إحصائيات سريعة</span>
+                    <span className={`transition-transform ${showSidebarPanel ? 'rotate-180' : ''}`}>▼</span>
+                  </button>
+
+                  <div className="flex-1 flex flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 animate-status-pulse">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      <span className="text-[10px] font-bold text-blue-700">المواعيد: {appointments.filter(a => a.status === 'confirmed').length} مؤكد</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 animate-status-pulse" style={{ animationDelay: '0.5s' }}>
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <span className="text-[10px] font-bold text-amber-700">العينات: {tests.filter(t => t.sampleStatus === 'collected').length} مجمعة</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 animate-status-pulse" style={{ animationDelay: '1s' }}>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span className="text-[10px] font-bold text-emerald-700">المحللة: {tests.filter(t => t.sampleStatus === 'analyzed').length} جاهزة</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5 animate-status-pulse" style={{ animationDelay: '1.5s' }}>
+                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      <span className="text-[10px] font-bold text-indigo-700">المعتمدة: {tests.filter(t => t.sampleStatus === 'approved').length} تقرير</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expandable Sidebar Panel */}
+                {showSidebarPanel && (
+                  <div className="mt-2 bg-white rounded-2xl border border-slate-200 shadow-lg p-4 animate-scaleIn">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* Appointments Summary */}
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <h5 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                          حالة المواعيد
+                        </h5>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-slate-500">مؤكدة:</span>
+                            <span className="font-bold text-blue-700">{appointments.filter(a => a.status === 'confirmed').length}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-slate-500">معلقة:</span>
+                            <span className="font-bold text-amber-700">{appointments.filter(a => a.status === 'pending').length}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-slate-500">ملغاة:</span>
+                            <span className="font-bold text-rose-700">{appointments.filter(a => a.status === 'cancelled').length}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sample Collection Status */}
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <h5 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                          <HeartPulse className="w-3.5 h-3.5 text-teal-600" />
+                          حالة سحب العينات
+                        </h5>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-slate-500">مجمعة:</span>
+                            <span className="font-bold text-amber-700">{tests.filter(t => t.sampleStatus === 'collected').length}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-slate-500">محللة:</span>
+                            <span className="font-bold text-emerald-700">{tests.filter(t => t.sampleStatus === 'analyzed').length}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-slate-500">معتمدة:</span>
+                            <span className="font-bold text-indigo-700">{tests.filter(t => t.sampleStatus === 'approved').length}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quick Actions */}
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <h5 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                          اختصارات سريعة
+                        </h5>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => setShowDiscountsPopout(true)}
+                            className="w-full text-[10px] bg-white hover:bg-amber-50 border border-slate-200 rounded-lg px-2 py-1.5 transition-all text-right font-bold text-slate-600"
+                          >
+                            💰 أسعار التحاليل والخصومات
+                          </button>
+                          <button
+                            onClick={() => setShowCalibrationPopout(true)}
+                            className="w-full text-[10px] bg-white hover:bg-blue-50 border border-slate-200 rounded-lg px-2 py-1.5 transition-all text-right font-bold text-slate-600"
+                          >
+                            ☁️ المزامنة السحابية
+                          </button>
+                          <button
+                            onClick={() => setShowPrinterControlPopout(true)}
+                            className="w-full text-[10px] bg-white hover:bg-teal-50 border border-slate-200 rounded-lg px-2 py-1.5 transition-all text-right font-bold text-slate-600"
+                          >
+                            🖨️ إعدادات الطباعة
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* MAIN WORKSPACE INTERFACES (DYNAMIC ROUTED PORTALS BASED ON ROLE) */}
             <div className="max-w-6xl mx-auto space-y-6 px-4 pb-24 sm:pb-6 sm:pr-24">
               
@@ -742,15 +861,15 @@ export default function App() {
                 </div>
               )}
               
-              {/* LAB REPORT READER ASSISTANT (مساعد قراءة التحاليل الطبية) */}
-              <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 rounded-3xl p-5 flex flex-col space-y-4 shadow-xl shadow-blue-500/30 no-print text-white animate-gradient">
+              {/* LAB REPORT READER ASSISTANT (مساعد قراءة ورقة التحليل) */}
+              <div className="test-assistant-simple rounded-3xl p-5 flex flex-col space-y-4 shadow-xl shadow-blue-900/30 no-print text-white">
                 <div className="flex items-center justify-between border-b border-blue-400/50 pb-3">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white text-blue-600 rounded-full shadow-sm animate-pulse">
-                      <Sparkles className="w-5 h-5" />
+                    <div className="p-2 bg-white text-blue-800 rounded-full shadow-sm animate-pulse">
+                      <FileText className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white">مساعد قراءة التحاليل</h3>
+                      <h3 className="text-base font-bold text-white">مساعد قراءة التحليل</h3>
                       <p className="text-[11px] font-medium text-blue-100">فهم نتائج التحاليل بسهولة ووضوح</p>
                     </div>
                   </div>
@@ -759,12 +878,12 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         if (confirm('هل أنت متأكد من حذف وإعادة تهيئة المحادثة؟')) {
-                          localStorage.removeItem('lims_ai_chat_feed');
+                          localStorage.removeItem('lims_test_reader_feed');
                           setAiFeed([
                             {
                               id: 'msg-init',
                               sender: 'ai',
-                              text: 'مرحباً! أنا مساعدك لقراءة وتحليل نتائج التحاليل الطبية. يمكنني مساعدتك في: \n• شرح نتائج تحاليل CBC (صورة الدم الكاملة)\n• تفسير تحاليل LIPID (الدهون)\n• توضيح نتائج وظائف الكبد LIVER\n• شرح تحاليل السكر GLUCOSE\n• المقارنة بالقيم المرجعية الطبيعية\n\nاختر نوع التحليل أو اكتب سؤالك وسأساعدك في فهم نتائجك بشكل مبسط.',
+                              text: 'مرحباً! أنا مساعدك لفهم نتائج التحاليل الطبية. يمكنني مساعدتك في: \n• شرح نتائج تحاليل CBC (صورة الدم الكاملة)\n• تفسير تحاليل LIPID (الدهون)\n• توضيح نتائج وظائف الكبد LIVER\n• شرح تحاليل السكر GLUCOSE\n• المقارنة بالقيم المرجعية الطبيعية\n\nاختر نوع التحليل أو اكتب سؤالك وسأساعدك في فهم نتائجك بشكل مبسط.',
                               time: 'الآن'
                             }
                           ]);
@@ -772,9 +891,9 @@ export default function App() {
                       }}
                       className="text-[10px] bg-blue-800 hover:bg-blue-900 border border-blue-500 text-blue-100 hover:text-white px-2 py-1 rounded-lg transition-all"
                     >
-                      حذف الذاكرة 🗑️
+                      حذف المحادثة 🗑️
                     </button>
-                    <span className="text-[10px] bg-emerald-400 text-emerald-950 px-3 py-1 rounded-full font-bold shadow-sm animate-pulse">نشط</span>
+                    <span className="text-[10px] bg-emerald-400 text-emerald-950 px-3 py-1 rounded-full font-bold shadow-sm animate-pulse">متاح</span>
                   </div>
                 </div>
 
@@ -785,6 +904,7 @@ export default function App() {
                       key={type}
                       onClick={() => handleQuickTestSelect(type)}
                       className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-all font-bold backdrop-blur-sm border border-white/20"
+                      title={`اقرأ عن ${guide.title}`}
                     >
                       {guide.title}
                     </button>
@@ -819,7 +939,7 @@ export default function App() {
                     type="text"
                     value={aiInput}
                     onChange={(e) => setAiInput(e.target.value)}
-                    placeholder="وجه سؤالك هنا (مثال: حجز موعد، تغيير سعر...)"
+                    placeholder="اسأل عن فهم نتائج تحليلك هنا (مثال: ما هو CBC؟)"
                     className="flex-1 bg-blue-700/50 border border-blue-500/50 hover:bg-blue-700/80 rounded-xl px-4 py-3.5 text-sm font-bold text-white outline-none focus:border-white focus:bg-blue-700 transition-all placeholder-blue-300/80 shadow-inner"
                   />
                   <button
@@ -921,10 +1041,14 @@ export default function App() {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
+            <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+              <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-connected inline-block"></span>
+                حفظ محلي - لا يحتاج إنترنت
+              </span>
               <button 
-                onClick={() => { setShowProfilePopout(false); alert('تمت مزامنة وحفظ التعديلات الطبية بنجاح في قاعدة البيانات.'); }}
-                className="bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer"
+                onClick={() => { setShowProfilePopout(false); }}
+                className="bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer transition-all"
               >
                 حفظ وإغلاق
               </button>

@@ -232,7 +232,11 @@ input:focus, select:focus, textarea:focus {
 }
 
 
-/* Animated gradient background like Google apps */
+/* ============================================
+   ANIMATED GOOGLE-STYLE COLOR SYSTEM
+   ============================================ */
+
+/* Google-inspired animated gradients */
 @keyframes gradientShift {
   0% { background-position: 0% 50%; }
   25% { background-position: 50% 100%; }
@@ -263,6 +267,64 @@ input:focus, select:focus, textarea:focus {
   100% { transform: scale(4); opacity: 0; }
 }
 
+/* Google Material Design animated colors */
+@keyframes googleBlueShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes googleMultiColor {
+  0% { background: linear-gradient(135deg, #4285f4, #34a853, #fbbc04, #ea4335); background-position: 0% 50%; }
+  25% { background: linear-gradient(135deg, #34a853, #fbbc04, #ea4335, #4285f4); background-position: 50% 100%; }
+  50% { background: linear-gradient(135deg, #fbbc04, #ea4335, #4285f4, #34a853); background-position: 100% 50%; }
+  75% { background: linear-gradient(135deg, #ea4335, #4285f4, #34a853, #fbbc04); background-position: 50% 0%; }
+  100% { background: linear-gradient(135deg, #4285f4, #34a853, #fbbc04, #ea4335); background-position: 0% 50%; }
+}
+
+@keyframes borderGlow {
+  0% { border-color: rgba(66, 133, 244, 0.3); box-shadow: 0 0 5px rgba(66, 133, 244, 0.2); }
+  25% { border-color: rgba(52, 168, 83, 0.3); box-shadow: 0 0 5px rgba(52, 168, 83, 0.2); }
+  50% { border-color: rgba(251, 188, 4, 0.3); box-shadow: 0 0 5px rgba(251, 188, 4, 0.2); }
+  75% { border-color: rgba(234, 67, 53, 0.3); box-shadow: 0 0 5px rgba(234, 67, 53, 0.2); }
+  100% { border-color: rgba(66, 133, 244, 0.3); box-shadow: 0 0 5px rgba(66, 133, 244, 0.2); }
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+@keyframes connectionPulse {
+  0% { box-shadow: 0 0 0 0 rgba(52, 168, 83, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(52, 168, 83, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 168, 83, 0); }
+}
+
+@keyframes offlinePulse {
+  0% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(234, 67, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); }
+}
+
+/* Animated border for connection status */
+.animate-border-glow {
+  animation: borderGlow 4s ease infinite;
+}
+
+/* Connection status indicators */
+.animate-connected {
+  animation: connectionPulse 2s infinite;
+}
+
+.animate-offline {
+  animation: offlinePulse 2s infinite;
+}
+
+.animate-status-pulse {
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
 .animate-gradient {
   background-size: 200% 200%;
   animation: gradientShift 8s ease infinite;
@@ -273,18 +335,105 @@ input:focus, select:focus, textarea:focus {
   animation: gradientShift 15s ease infinite;
 }
 
+/* Google-style multi-color animated background */
+.animate-google-colors {
+  background: linear-gradient(135deg, #4285f4, #34a853, #fbbc04, #ea4335, #4285f4);
+  background-size: 400% 400%;
+  animation: gradientShift 6s ease infinite;
+}
+
+.animate-google-colors-slow {
+  background: linear-gradient(135deg, #4285f4, #34a853, #fbbc04, #ea4335, #4285f4);
+  background-size: 500% 500%;
+  animation: gradientShift 12s ease infinite;
+}
+
+/* Shimmer effects */
 .animate-shimmer {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   background-size: 2000px 100%;
   animation: shimmer 3s ease infinite;
 }
 
+/* Floating animation */
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
 
+/* Ripple effect */
 .animate-ripple {
   animation: ripple 0.6s ease-out forwards;
+}
+
+/* Section separator with animated colors */
+.section-separator {
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(66, 133, 244, 0.3) 20%, 
+    rgba(52, 168, 83, 0.3) 40%, 
+    rgba(251, 188, 4, 0.3) 60%, 
+    rgba(234, 67, 53, 0.3) 80%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease infinite;
+  margin: 1.5rem 0;
+}
+
+/* Settings card with animated border */
+.settings-card-animated {
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.settings-card-animated:hover {
+  border-color: rgba(66, 133, 244, 0.3);
+  box-shadow: 0 4px 20px -5px rgba(66, 133, 244, 0.15);
+}
+
+/* Offline-aware sync indicator */
+.sync-indicator {
+  position: relative;
+  overflow: hidden;
+}
+
+.sync-indicator::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: shimmer 2s ease infinite;
+}
+
+/* Test reading assistant - simplified styling */
+.test-assistant-simple {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1e3a5f 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 10s ease infinite;
+}
+
+/* Google Drive connect button styling */
+.google-connect-btn {
+  background: linear-gradient(135deg, #4285f4, #3367d6);
+  background-size: 200% 200%;
+  transition: all 0.3s ease;
+}
+
+.google-connect-btn:hover {
+  background-position: 100% 0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(66, 133, 244, 0.4);
+}
+
+.google-connect-btn:active {
+  transform: translateY(0);
 }
 
 /* Smooth card hover effects */
