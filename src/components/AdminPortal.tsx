@@ -1276,91 +1276,78 @@ export default function AdminPortal({
 
           <hr className="border-slate-100" />
 
-          {/* NEW SECTION 9: LIFELONG SECURE DATABASE DIAGNOSTICS & STATUS */}
+          {/* تم إخفاء قسم التحقق الذاتي من سلامة قاعدة البيانات حسب طلب المستخدم */}
+
+          <hr className="border-slate-100" />
+
+          {/* Reference Ranges Analyzer for Devices */}
+          <hr className="border-slate-100" />
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5 border-r-2 border-emerald-600 pr-2">
-                <Database className="w-4 h-4 text-emerald-600" />
-                <span>التحقق الذاتي من سلامة وأمان قاعدة البيانات الطبية وصلاحية الترخيص مدى الحياة</span>
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+                <span>معايرة الحدود المرجعية الحيوية للأجهزة (Reference Ranges Analyzer)</span>
               </h4>
-              <span className="bg-emerald-600 text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-sm animate-pulse flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>الترخيص: صالح مدى الحياة</span>
+              <span className="bg-blue-50 text-blue-800 text-[10px] px-2 py-0.5 rounded-lg font-bold">
+                جديد
               </span>
             </div>
 
-            <div className="bg-slate-900 text-slate-100 p-5 rounded-2xl border border-slate-800 space-y-4 relative overflow-hidden">
-              <div className="absolute top-0 left-0 bg-emerald-500/10 text-emerald-450 px-4 py-1.5 rounded-br-2xl text-[10px] font-mono border-b border-r border-emerald-500/20">
-                AES-256 E2E Active
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">اختر الفحص المعني:</label>
+                  <select
+                    value={selectedSettingType}
+                    onChange={(e) => setSelectedSettingType(e.target.value as any)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none text-right cursor-pointer"
+                  >
+                    <option value="CBC">صورة دم كاملة (CBC) - الهيموجلوبين</option>
+                    <option value="LIPID">تحليل الدهون (LIPID) - الكوليسترول</option>
+                    <option value="LIVER">وظائف الكبد (LIVER) - الإنزيمات</option>
+                    <option value="GLUCOSE">تحليل السكر (GLUCOSE)</option>
+                  </select>
+                </div>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">الحد الأدنى الطبيعي المقبول:</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={settingMin}
+                      onChange={(e) => setSettingMin(Number(e.target.value))}
+                      className="w-full text-center bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-emerald-600 outline-none transition-all font-mono"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">الحد الأقصى الطبيعي المقبول:</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={settingMax}
+                      onChange={(e) => setSettingMax(Number(e.target.value))}
+                      className="w-full text-center bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-emerald-600 outline-none transition-all font-mono"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">Database Status Report</span>
-                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
-                  قاعدة البيانات المحلية والسحابية المشتركة مأمنة بالكامل عن طريق التوقيع الرقمي والتشفير المعياري المتقدم لحفظ وحماية خصوصية بيانات المرضى والتقارير بموجب القوانين والأنظمة السعودية.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1 text-center">
-                <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1">
-                  <span className="text-[9px] text-slate-500 block font-bold">بنية الملفات والـ Schema</span>
-                  <span className="text-emerald-450 font-extrabold text-xs">سليمة ومأمنة 100%</span>
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-[10px] text-slate-400">
+                  <span>القيمة الحالية: </span>
+                  <span className="font-mono font-bold text-slate-600">{settingMin} - {settingMax}</span>
                 </div>
-                <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1">
-                  <span className="text-[9px] text-slate-500 block font-bold">حالة تشفير المعامل الطبية</span>
-                  <span className="text-teal-400 font-extrabold text-xs">AES-256 مشفر طرفياً</span>
-                </div>
-                <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1 col-span-2 sm:col-span-1">
-                  <span className="text-[9px] text-slate-500 block font-bold">صلاحية ترخيص المحرك</span>
-                  <span className="text-indigo-400 font-extrabold text-xs">مدى الحياة (Lifetime Valid)</span>
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-start">
                 <button
                   type="button"
-                  onClick={runDatabaseIntegrityDiagnostic}
-                  disabled={dbChecking}
-                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/40"
+                  onClick={handleSaveSettings}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold px-5 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-md animate-gradient"
                 >
-                  <Database className="w-4 h-4" />
-                  <span>{dbChecking ? "جاري القيام بالتحليل الذاتي الأمني..." : "تفحص أمان وصلاحية قاعدة البيانات الآن"}</span>
+                  <CheckCircle2 className="w-4 h-4 inline-block ml-1" />
+                  تحديث القيم المرجعية
                 </button>
               </div>
-
-              {/* Logs area active */}
-              {(dbChecking || dbCheckLogs.length > 0) && (
-                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-1 text-[11px] font-mono text-emerald-400 leading-relaxed text-right animate-fadeIn">
-                  {dbCheckLogs.map((log, index) => (
-                    <div key={index} className="flex items-center gap-1.5 justify-start">
-                      <span className="text-teal-500">▶</span>
-                      <span>{log}</span>
-                    </div>
-                  ))}
-                  {dbChecking && (
-                    <div className="text-xs text-slate-400 animate-pulse mt-2 flex items-center justify-start gap-1">
-                      <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-ping" />
-                      <span>جاري القراءة والمعالجة...</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {dbCheckSuccess && (
-                <div className="bg-slate-950 border border-emerald-500/40 p-4 rounded-xl text-xs text-teal-300 leading-relaxed font-sans space-y-1.5 animate-scaleIn">
-                  <div className="font-extrabold text-white flex items-center gap-1.5">
-                    <Check className="w-4.5 h-4.5 text-emerald-400" />
-                    <span>تقرير الفحص والتحقق الذاتي الدوري (Database Health Check):</span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    تم التأكد والتحقق من سلامة الجداول وتطابق التواقيع البرمجية. قاعدة البيانات تحتفظ بصلاحيتها مدى الحياة بنسبة حماية 100% ضد الفقدان أو العبث. الترخيص نشط مع السرفرات الطبية السحابية ولا توجد أية أخطاء.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
-
-          <hr className="border-slate-100" />
 
           <div className="pt-4 flex justify-between items-center border-t border-slate-100">
             <span className="text-[10px] text-slate-400 font-mono">آخر تحديث سحابي: {new Date().toISOString().split('T')[0]} UTC</span>

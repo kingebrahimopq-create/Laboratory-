@@ -4,7 +4,8 @@ import { PARAMETER_TEMPLATES } from '../data';
 import { 
   Users, Search, PlusCircle, Calendar, Receipt, 
   CheckCircle2, AlertCircle, Phone, CreditCard, 
-  Printer, Trash2, Check, X, ShieldAlert, Barcode 
+  Printer, Trash2, Check, X, ShieldAlert, Barcode,
+  Bell, AlertTriangle
 } from 'lucide-react';
 
 interface ReceptionPortalProps {
@@ -97,6 +98,21 @@ export default function ReceptionPortal({
     setRegBirth('');
     
     setTimeout(() => setRegSuccess(''), 4000);
+  };
+
+  // Alert/Notification system for appointments
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [alertType, setAlertType] = useState<'success' | 'error' | 'warning'>('success');
+
+  const showAlert = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setTimeout(() => setAlertMessage(null), 4000);
+  };
+
+  const handleCancelAppointmentWithAlert = (aptId: string, patientName: string) => {
+    onCancelAppointment(aptId);
+    showAlert(`تم إلغاء موعد المريض ${patientName} بنجاح`, 'warning');
   };
 
   const handleLogTest = (e: React.FormEvent) => {
@@ -197,6 +213,23 @@ export default function ReceptionPortal({
               [خادم إشعارات WhatsApp]: تم إرسال رسالة تذكيرية والتعليمات الطبية بنجاح للمريض: {smsAlertPatient}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Appointment Alert System */}
+      {alertMessage && (
+        <div className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-xl animate-fadeIn flex items-center gap-3 ${
+          alertType === 'success' ? 'bg-emerald-500 text-white' : 
+          alertType === 'warning' ? 'bg-amber-500 text-white' : 
+          'bg-rose-500 text-white'
+        }`}>
+          {alertType === 'success' ? <CheckCircle2 className="w-5 h-5" /> : 
+           alertType === 'warning' ? <AlertTriangle className="w-5 h-5" /> : 
+           <X className="w-5 h-5" />}
+          <p className="text-sm font-bold">{alertMessage}</p>
+          <button onClick={() => setAlertMessage(null)} className="mr-2 hover:opacity-70">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -496,11 +529,16 @@ export default function ReceptionPortal({
                           <span>تأكيد الموعد وإرسال SMS</span>
                         </button>
                         <button
-                          onClick={() => onCancelAppointment(apt.id)}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold p-2 rounded-lg transition-all cursor-pointer"
+                          onClick={() => {
+                            if (confirm(`هل أنت متأكد من إلغاء موعد المريض ${apt.patientName}؟`)) {
+                              handleCancelAppointmentWithAlert(apt.id, apt.patientName);
+                            }
+                          }}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold p-2 rounded-lg transition-all cursor-pointer flex items-center gap-1"
                           id={`btn-cancel-${apt.id}`}
                         >
                           <X className="w-3.5 h-3.5" />
+                          <span>إلغاء</span>
                         </button>
                       </>
                     ) : (

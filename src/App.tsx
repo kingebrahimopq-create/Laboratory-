@@ -118,9 +118,10 @@ export default function App() {
   }, []);
   const [discountCoupons, setDiscountCoupons] = useState<{ code: string; percent: number; label: string }[]>([]);
 
-  // --- CLINICAL AI COPILOT CHATBOT ---
+  // --- LAB REPORT READER ASSISTANT (مساعد قراءة التحاليل) ---
   const [aiInput, setAiInput] = useState<string>('');
   const [aiTyping, setAiTyping] = useState<boolean>(false);
+  const [showTestTypeSelector, setShowTestTypeSelector] = useState(false);
   const [aiFeed, setAiFeed] = useState<{ id: string; sender: 'ai' | 'user'; text: string; time: string }[]>(() => {
     const saved = localStorage.getItem('lims_ai_chat_feed');
     if (saved) {
@@ -134,7 +135,7 @@ export default function App() {
       {
         id: 'msg-init',
         sender: 'ai',
-        text: 'مرحباً بك! أنا مستشارك الطبي المساعد مكامل الشمول بقاعدة البيانات ولدي القدرة على التحكم الفعلي بطلبك. يمكنني حجز المواعيد وتعديل الأسعار وإدارة الخصومات تلبية لأوامرك الطبية. 💡 تنبيه استشاري مخلص: كافة معلوماتي تندرج ضمن المشورة والإرشاد، ويُوصى دائماً بمراجعة وتأكيد الطبيب المعالج المعتمد لاتخاذ القرارات الإكلينيكية.',
+        text: 'مرحباً! أنا مساعدك لقراءة وتحليل نتائج التحاليل الطبية. يمكنني مساعدتك في:\n• شرح نتائج تحاليل CBC (صورة الدم الكاملة)\n• تفسير تحاليل LIPID (الدهون)\n• توضيح نتائج وظائف الكبد LIVER\n• شرح تحاليل السكر GLUCOSE\n• المقارنة بالقيم المرجعية الطبيعية\n\nاختر نوع التحليل أو اكتب سؤالك وسأساعدك في فهم نتائجك بشكل مبسط.',
         time: 'الآن'
       }
     ];
@@ -143,6 +144,46 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('lims_ai_chat_feed', JSON.stringify(aiFeed));
   }, [aiFeed]);
+
+  // Test reading assistant knowledge base
+  const testReadingGuide: Record<string, { title: string; explanation: string; normalRanges: string; tips: string }> = {
+    CBC: {
+      title: 'صورة الدم الكاملة (CBC)',
+      explanation: 'هو فحص يقيس مكونات الدم الرئيسية: خلايا الدم الحمراء (تنقل الأكسجين)، خلايا الدم البيضاء (تقاوم العدوى)، والصفائح الدموية (تمنع النزيف).',
+      normalRanges: '• الهيموجلوبين: 12-17.5 غ/دل\n• خلايا الدم الحمراء: 4.5-5.5 مليون/مم٣\n• خلايا الدم البيضاء: 4,000-11,000/مم٣\n• الصفائح الدموية: 150,000-450,000/مم٣\n• الهيماتوكريت: 36-48%',
+      tips: 'نصائح: تجنب التدخين قبل الفحص بساعتين، وإذا كانت النتائج خارج المدى الطبيعي يجب مراجعة الطبيب.'
+    },
+    LIPID: {
+      title: 'تحليل الدهون (Lipid Profile)',
+      explanation: 'يقيس مستويات الدهون في الدم: الكوليسترول الكلي، الدهون الثلاثية، الكوليسترول الجيد (HDL)، والكوليسترول الضار (LDL).',
+      normalRanges: '• الكوليسترول الكلي: أقل من 200 ملغ/دل\n• الدهون الثلاثية: أقل من 150 ملغ/دل\n• HDL (الجيد): أكثر من 40 ملغ/دل\n• LDL (الضار): أقل من 100 ملغ/دل',
+      tips: 'نصائح: يجب الصيام 12 ساعة قبل الفحص، وتجنب الدهون قبل الفحص بيوم.'
+    },
+    LIVER: {
+      title: 'وظائف الكبد (Liver Function)',
+      explanation: 'يقيس إنزيمات الكبد التي تكشف عن صحة الكبد وقدرته على أداء وظائفه مثل إزالة السموم وإنتاج البروتينات.',
+      normalRanges: '• ALT (SGPT): 7-56 وحدة/لتر\n• AST (SGOT): 10-40 وحدة/لتر\n• البيليروبين الكلي: 0.1-1.2 ملغ/دل\n• الألبومين: 3.5-5.0 غ/دل',
+      tips: 'نصائح: تجنب الكحول قبل الفحص بأسبوع، وتجنب الأدوية التي قد تؤثر على الكبد.'
+    },
+    GLUCOSE: {
+      title: 'تحليل السكر (Glucose)',
+      explanation: 'يقيس مستوى السكر في الدم للكشف عن مرض السكري أو مراقبة مستويات السكر لدى المصابين.',
+      normalRanges: '• السكر الصائم: 70-100 ملغ/دل\n• السكر العشوائي: أقل من 140 ملغ/دل\n• HbA1c: أقل من 5.7%',
+      tips: 'نصائح: يجب الصيام 8-12 ساعة للسكر الصائم، وتجنب الحلويات قبل الفحص.'
+    },
+    THYROID: {
+      title: 'وظائف الغدة الدرقية (Thyroid)',
+      explanation: 'يقيس هرمونات الغدة الدرقية (T3, T4, TSH) التي تتحكم في التمثيل الغذائي ومستوى الطاقة في الجسم.',
+      normalRanges: '• TSH: 0.4-4.0 ميلي وحدة/لتر\n• T3: 80-200 نانوغرام/دل\n• T4: 5.0-12.0 ميكروغرام/دل',
+      tips: 'نصائح: يفضل إجراء الفحص في الصباح الباكر، وتجنب الأدوية المؤثرة على الدرقية.'
+    },
+    KIDNEY: {
+      title: 'وظائف الكلى (Kidney Function)',
+      explanation: 'يقيس مؤشرات أداء الكلى مثل اليوريا والكرياتينين والبوتاسيوم والصوديوم.',
+      normalRanges: '• اليوريا: 7-20 ملغ/دل\n• الكرياتينين: 0.6-1.3 ملغ/دل\n• البوتاسيوم: 3.5-5.0 ميكرومول/لتر\n• الصوديوم: 135-145 ميكرومول/لتر',
+      tips: 'نصائح: شرب الماء بكثرة قبل الفحص، وتجنب الأطعمة الغنية بالبروتين.'
+    }
+  };
 
   // Handle URL deep checks for scanned QR Codes
   useEffect(() => {
@@ -294,7 +335,7 @@ export default function App() {
     setCurrentRole('public_verify');
   };
 
-  // --- CONNECTED CLINICAL AI DISPATCHER ENGINE ---
+  // --- LAB REPORT READER ASSISTANT ENGINE ---
   const handleAiCommandSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiInput.trim()) return;
@@ -315,125 +356,55 @@ export default function App() {
     let responseText = '';
     const textLower = userText.toLowerCase();
 
-    if (textLower.includes('حجز') || textLower.includes('موعد') || textLower.includes('appointment')) {
-      // AI command to book appointment
-      const pPhone = '01211059432';
-      const pName = 'كمال المحلاوي';
-      const newApt: Omit<Appointment, 'id'> = {
-        patientName: pName,
-        patientPhone: pPhone,
-        date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-        time: '10:30',
-        type: 'lab',
-        testType: 'CBC',
-        status: 'confirmed',
-        notes: 'حجز تلقائي مؤكد بالكامل عبر المساعد الطبي الذكي للتحكم بالأنظمة'
-      };
-      handleBookAppointment(newApt);
-      responseText = `✓ تم تسجيل وتأكيد موعد العيادة بنجاح للمريض "${pName}" (جوال: ${pPhone}) ليوم غدٍ الساعة 10:30 ص في قاعدة البيانات. ⚖️ مشورة طبية: يُرجى تذكير المريض بالصيام لمدة ٨ ساعات؛ ومراجعة الطبيب المعالج المعتمد لتطابق الفحوص التناظرية الإكلينيكية.`;
+    // Check if user is asking about a specific test type
+    const testTypeMatch = Object.keys(testReadingGuide).find(type => 
+      textLower.includes(type.toLowerCase()) || 
+      textLower.includes(testReadingGuide[type].title.toLowerCase())
+    );
 
-      setAiFeed(prev => [...prev, {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: responseText,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
-      }]);
-      setAiTyping(false);
-
-    } else if (textLower.includes('مريض') || textLower.includes('تسجيل') || textLower.includes('كامل') || textLower.includes('patient')) {
-      // AI command to register patient
-      const newPat: Patient = {
-        id: 'EMR-30911029',
-        name: 'كمال المحلاوي',
-        nameEn: 'Kamal AlMahlawi',
-        phone: '01019183921',
-        gender: 'ذكر',
-        birthDate: '1979-05-12',
-        bloodType: 'AB+'
-      };
-      handleRegisterPatient(newPat);
-      setSelectedPatientId(newPat.id);
-      responseText = `✓ تم تسجيل وتأسيس الملف السريري للمريض "كمال المحلاوي" (EMR-30911029) وتأكيد هويته في السجل الطبي لـ LIMS. ⚖️ مشورة طبية: الملف نشط ومؤهل لجدولة فحوصات السحب الفورية. يُنصح دائماً بمراجعة الطبيب المعالج لإقرار أية أدوية أو تحضيرات مسبقة.`;
-
-      setAiFeed(prev => [...prev, {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: responseText,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
-      }]);
-      setAiTyping(false);
-
-    } else if (textLower.includes('خصم') || textLower.includes('تخفيض') || textLower.includes('coupon') || textLower.includes('discount')) {
-      // AI command to set discount
-      setGlobalDiscountPercent(25);
-      responseText = `✓ تم تعديل معايير التسعير وتطبيق تفعيل خصم ٢٥٪ عام على كبائن ومجموعات التحاليل الطبية استجابة لطلبك الإداري. ⚖️ مشورة ورأي: يُنصح الطبيب المعالج بتقييم الفائدة قبل دحرجة حساب التكاليف، لتوفير الرعاية للمستحقين بنظام عادل وثابت.`;
-
-      setAiFeed(prev => [...prev, {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: responseText,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
-      }]);
-      setAiTyping(false);
-
-    } else if (textLower.includes('سعر') || textLower.includes('تعديل سعر') || textLower.includes('price')) {
-      // AI command to change base pricing
-      const updated = {
-        ...settings,
-        customTestPricing: {
-          ...settings.customTestPricing,
-          'CBC': 150
-        }
-      };
-      handleUpdateSettings(updated);
-      responseText = `✓ تم بنجاح تغيير التعرفة وتحديد سعر فحص صورة الدم الكاملة (CBC) التنافسي إلى ١٥٠ ج.م في لوحة ترس الإدارة والاتصال المالي. ⚖️ مشورة طبية: سعر مخفض لخدمة الطب المجتمعي؛ تفضل بتأكيد الاعتماد المالي من الطبيب المسؤول لإرشاد محاسبي متوافق.`;
-
-      setAiFeed(prev => [...prev, {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: responseText,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
-      }]);
-      setAiTyping(false);
-
-    } else if (textLower.includes('بصمة') || textLower.includes('بصمه') || textLower.includes('bio')) {
-      // AI command to verify biometric security
-      setIsBiometricVerified(true);
-      responseText = `✓ تم تمكين بروتوكول المصادقة الطبية الثنائية وبصمة الإصبع المنفصلة وتأكيد ترابط قاعدة بيانات LIMS بنجاح. ⚖️ مشورة فنية: تأمين الهويات مستقل كلياً لمنع التزييف السريري وسرية كبائن المختبر.`;
-
-      setAiFeed(prev => [...prev, {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: responseText,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
-      }]);
-      setAiTyping(false);
-
+    if (testTypeMatch) {
+      const guide = testReadingGuide[testTypeMatch];
+      responseText = `📋 **${guide.title}**\n\n${guide.explanation}\n\n📊 **القيم المرجعية الطبيعية:**\n${guide.normalRanges}\n\n💡 **${guide.tips}**\n\n⚠️ ملاحظة: هذه المعلومات للتوعية فقط. أي نتيجة خارج المعدل الطبيعي تستدعي مراجعة الطبيب المعالج.`;
+    } else if (textLower.includes('تحليل') || textLower.includes('فحص') || textLower.includes('نتيجة') || textLower.includes('طبيعي') || textLower.includes('اعلى') || textLower.includes('اقل')) {
+      responseText = `🔬 يمكنني مساعدتك في فهم نتائج التحاليل التالية:\n\n• **CBC** - صورة الدم الكاملة\n• **LIPID** - تحليل الدهون\n• **LIVER** - وظائف الكبد\n• **GLUCOSE** - تحليل السكر\n• **THYROID** - وظائف الغدة الدرقية\n• **KIDNEY** - وظائف الكلى\n\nاكتب اسم التحليل الذي تريد فهمه وسأشرح لك كل التفاصيل والقيم المرجعية.`;
     } else {
-      // Query the live server-side Gemini 3.5 API proxy endpoint
-      try {
-        const res = await fetch("/api/gemini/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: userText, history: aiFeed })
-        });
-        const data = await res.json();
-        responseText = data.text || "⚠️ طاب يومكم، المساعد الذكي لم يستطع صياغة إجابة فوراً. برجاء المحاولة مجدداً.";
-      } catch (err) {
-        console.error(err);
-        responseText = `⚠️ عذراً، تعذر الوصول لسحابة الذكاء الاصطناعي. مستويات الهيموغلوبين الطبيعية تتراوح بحدود ١٢.٥ - ١٧ غ/دل. إن أية قراءات خارج هذا النطاق تستدعي قطعاً مراجعة الطبيب المعالج المعتمد.`;
-      }
-
-      setAiFeed(prev => [...prev, {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: responseText,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
-      }]);
-      setAiTyping(false);
+      responseText = `👋 أنا مساعدك لقراءة التحاليل الطبية!\n\nيمكنني مساعدتك في:\n• شرح نتائج تحاليل الدم المختلفة\n• توضيح القيم المرجعية الطبيعية\n• شرح ماذا تعني النتائج المرتفعة أو المنخفضة\n\nما نوع التحليل الذي تريد مساعدة في فهمه؟ (CBC, LIPID, LIVER, GLUCOSE, THYROID, KIDNEY)`;
     }
+
+    setAiFeed(prev => [...prev, {
+      id: `ai-${Date.now()}`,
+      sender: 'ai',
+      text: responseText,
+      time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
+    }]);
+    setAiTyping(false);
   };
 
+  const handleQuickTestSelect = (testType: string) => {
+    const guide = testReadingGuide[testType];
+    if (!guide) return;
+
+    setAiFeed(prev => [...prev, {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text: `أريد فهم تحليل ${guide.title}`,
+      time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
+    }]);
+    setAiTyping(true);
+
+    setTimeout(() => {
+      const responseText = `📋 **${guide.title}**\n\n${guide.explanation}\n\n📊 **القيم المرجعية الطبيعية:**\n${guide.normalRanges}\n\n💡 **${guide.tips}**\n\n⚠️ ملاحظة: هذه المعلومات للتوعية فقط. أي نتيجة خارج المعدل الطبيعي تستدعي مراجعة الطبيب المعالج.`;
+
+      setAiFeed(prev => [...prev, {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: responseText,
+        time: new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
+      }]);
+      setAiTyping(false);
+      setShowTestTypeSelector(false);
+    }, 500);
+  };
   // --- GOOGLE SIGN-IN CLOUD BACKUP ---
   const handleGoogleSignInOnHome = async () => {
     try {
@@ -771,29 +742,29 @@ export default function App() {
                 </div>
               )}
               
-              {/* CONNECTED SECURE CO-PILOT CHATBOT (الذكاء الاصطناعي الفعّال بالمشورة) */}
-              <div className="bg-blue-600 rounded-3xl p-5 flex flex-col space-y-4 shadow-xl shadow-blue-500/30 no-print text-white">
-                <div className="flex items-center justify-between border-b border-blue-500/50 pb-3">
+              {/* LAB REPORT READER ASSISTANT (مساعد قراءة التحاليل الطبية) */}
+              <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 rounded-3xl p-5 flex flex-col space-y-4 shadow-xl shadow-blue-500/30 no-print text-white animate-gradient">
+                <div className="flex items-center justify-between border-b border-blue-400/50 pb-3">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white text-blue-600 rounded-full shadow-sm">
-                      <Sparkles className="w-5 h-5 animate-pulse" />
+                    <div className="p-2 bg-white text-blue-600 rounded-full shadow-sm animate-pulse">
+                      <Sparkles className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white">المساعد والطبيب الرقمي</h3>
-                      <p className="text-[11px] font-medium text-blue-100">تحكم ذكي بإمكانيات فائقة البساطة</p>
+                      <h3 className="text-base font-bold text-white">مساعد قراءة التحاليل</h3>
+                      <p className="text-[11px] font-medium text-blue-100">فهم نتائج التحاليل بسهولة ووضوح</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm('هل أنت متأكد من حذف وإعادة تهيئة ذاكرة المحادثة السابقة؟')) {
+                        if (confirm('هل أنت متأكد من حذف وإعادة تهيئة المحادثة؟')) {
                           localStorage.removeItem('lims_ai_chat_feed');
                           setAiFeed([
                             {
                               id: 'msg-init',
                               sender: 'ai',
-                              text: 'مرحباً بك! أنا مستشارك الطبي المساعد مكامل الشمول بقاعدة البيانات ولدي القدرة على التحكم الفعلي بطلبك. يمكنني حجز المواعيد وتعديل الأسعار وإدارة الخصومات تلبية لأوامرك الطبية. 💡 تنبيه استشاري مخلص: كافة معلوماتي تندرج ضمن المشورة والإرشاد، ويُوصى دائماً بمراجعة وتأكيد الطبيب المعالج المعتمد لاتخاذ القرارات الإكلينيكية.',
+                              text: 'مرحباً! أنا مساعدك لقراءة وتحليل نتائج التحاليل الطبية. يمكنني مساعدتك في: \n• شرح نتائج تحاليل CBC (صورة الدم الكاملة)\n• تفسير تحاليل LIPID (الدهون)\n• توضيح نتائج وظائف الكبد LIVER\n• شرح تحاليل السكر GLUCOSE\n• المقارنة بالقيم المرجعية الطبيعية\n\nاختر نوع التحليل أو اكتب سؤالك وسأساعدك في فهم نتائجك بشكل مبسط.',
                               time: 'الآن'
                             }
                           ]);
@@ -803,8 +774,21 @@ export default function App() {
                     >
                       حذف الذاكرة 🗑️
                     </button>
-                    <span className="text-[10px] bg-emerald-400 text-emerald-950 px-3 py-1 rounded-full font-bold shadow-sm">نشط</span>
+                    <span className="text-[10px] bg-emerald-400 text-emerald-950 px-3 py-1 rounded-full font-bold shadow-sm animate-pulse">نشط</span>
                   </div>
+                </div>
+
+                {/* Quick Test Type Selector */}
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(testReadingGuide).map(([type, guide]) => (
+                    <button
+                      key={type}
+                      onClick={() => handleQuickTestSelect(type)}
+                      className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-all font-bold backdrop-blur-sm border border-white/20"
+                    >
+                      {guide.title}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Messages Feed View */}
@@ -975,15 +959,22 @@ export default function App() {
                 </p>
 
                 {!googleUser ? (
-                  <button
-                    onClick={handleGoogleSignInSimulate}
-                    className="w-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-md"
-                  >
-                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                      <path fill="#EA4335" d="M12.2 10.2v3.7h6.8c-.3 1.8-2 5.1-6.8 5.1-4.1 0-7.5-3.4-7.5-7.5s3.4-7.5 7.5-7.5c2.4 0 4 .9 4.9 1.8l2.9-2.8C18.1 1.4 15.3 0 12.2 0 5.5 0 0 5.5 0 12.2S5.5 24.4 12.2 24.4c7 0 11.6-4.9 11.6-11.8 0-.8-.1-1.4-.2-2.4H12.2z"/>
-                    </svg>
-                    <span>تسجيل الدخول الآمن بحساب Google</span>
-                  </button>
+                  <div className="space-y-3">
+                    <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        سجل الدخول بحساب Google للمزامنة السحابية. لا حاجة لنسخ رموز Token يدوياً.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleGoogleSignInSimulate}
+                      className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-md animate-gradient"
+                    >
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                        <path fill="#FFFFFF" d="M12.2 10.2v3.7h6.8c-.3 1.8-2 5.1-6.8 5.1-4.1 0-7.5-3.4-7.5-7.5s3.4-7.5 7.5-7.5c2.4 0 4 .9 4.9 1.8l2.9-2.8C18.1 1.4 15.3 0 12.2 0 5.5 0 0 5.5 0 12.2S5.5 24.4 12.2 24.4c7 0 11.6-4.9 11.6-11.8 0-.8-.1-1.4-.2-2.4H12.2z"/>
+                      </svg>
+                      <span>تسجيل الدخول بـ Google OAuth</span>
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-3 pt-1">
                     <div className="flex items-center gap-3 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
