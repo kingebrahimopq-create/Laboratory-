@@ -38,12 +38,5 @@
       "filter": ["**/*"]
     }
   ],
-  "publish": [
-    {
-      "provider": "github",
-      "owner": "kingebrahimopq-create",
-      "repo": "Laboratory-",
-      "private": false
-    }
-  ]
+  "publish": null
 }
