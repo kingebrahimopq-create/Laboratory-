@@ -19,9 +19,6 @@
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "shortcutName": "My Lab LIMS",
-    "installerIcon": "public/icon.ico",
-    "uninstallerIcon": "public/icon.ico",
-    "installerHeaderIcon": "public/icon.ico",
     "displayLanguageSelector": true,
     "multiLanguageInstaller": true
   },
@@ -29,12 +26,10 @@
     "artifactName": "MyLab-LIMS-Portable-${version}.${ext}"
   },
   "mac": {
-    "target": ["dmg", "zip"],
-    "icon": "public/icon.icns"
+    "target": ["dmg", "zip"]
   },
   "linux": {
-    "target": ["AppImage", "deb"],
-    "icon": "public/icon.png"
+    "target": ["AppImage", "deb"]
   },
   "extraResources": [
     {
