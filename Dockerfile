@@ -1,7 +1,4 @@
-# My Lab LIMS - Docker Configuration
-# Multi-stage build for production optimization
-
-# Stage 1: Build
+# Build stage
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -12,13 +9,13 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
-# Copy source code
+# Copy source files
 COPY . .
 
 # Build the application
 RUN npm run build
 
-# Stage 2: Production
+# Production stage
 FROM node:20-alpine AS production
 
 WORKDIR /app
@@ -26,19 +23,24 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm install --legacy-peer-deps --omit=dev
+# Install only production dependencies
+RUN npm install --only=production --legacy-peer-deps
 
-# Copy built assets from builder
+# Copy built files from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/dist/server.cjs ./dist/server.cjs
+COPY --from=builder /app/electron ./electron
+COPY --from=builder /app/package.json ./
+
+# Copy other necessary files
+COPY server.ts ./
+COPY .env.example ./
 
 # Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
 
 # Start the application
 CMD ["node", "dist/server.cjs"]

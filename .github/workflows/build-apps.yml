@@ -172,12 +172,12 @@ jobs:
           files: artifacts/*
           body: |
             # My Lab LIMS - Medical Laboratory Application
-            
+
             ## Downloads
-            - 📱 **Android APK** (Debug): For testing on Android devices
-            - 💻 **Windows Installer**: Desktop application for Windows 10/11
-            - 🌐 **Web Application**: Static files for web deployment
-            
+            - Android APK (Debug): For testing on Android devices
+            - Windows Installer: Desktop application for Windows 10/11
+            - Web Application: Static files for web deployment
+
             ## Features
             - Patient management & registration
             - Lab test ordering & results
@@ -186,7 +186,7 @@ jobs:
             - Printable reports
             - AI medical assistant
             - Multi-language support (Arabic/English)
-            
+
             ## Installation
             - **Windows**: Run the `.exe` installer
             - **Android**: Enable "Install from unknown sources" and install the `.apk`

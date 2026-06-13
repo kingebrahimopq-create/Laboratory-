@@ -1,63 +1,37 @@
 version: '3.8'
 
 services:
-  mylab-lims:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mylab-lims
-    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - DATABASE_URL=${DATABASE_URL:-}
     volumes:
-      - mylab-data:/app/data
+      - ./data:/app/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
-    networks:
-      - mylab-network
 
-  # PostgreSQL Database (Optional - uncomment to enable)
-  # postgres:
-  #   image: postgres:16-alpine
-  #   container_name: mylab-postgres
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_DB: mylab
-  #     POSTGRES_USER: mylab_user
-  #     POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-secure_password}
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres-data:/var/lib/postgresql/data
-  #   networks:
-  #     - mylab-network
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=mylab
+      - POSTGRES_USER=mylab_user
+      - POSTGRES_PASSWORD=secure_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
-  # Redis Cache (Optional - uncomment to enable)
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: mylab-redis
-  #   restart: unless-stopped
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis-data:/data
-  #   networks:
-  #     - mylab-network
-
-volumes:
-  mylab-data:
-  # postgres-data:
-  # redis-data:
-
-networks:
-  mylab-network:
-    driver: bridge
+  mongodb:
+    image: mongo:7
+    environment:
+      -

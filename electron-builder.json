@@ -10,13 +10,47 @@
     "package.json"
   ],
   "win": {
-    "target": "nsis"
+    "target": ["nsis", "portable"],
+    "icon": "public/icon.ico"
   },
   "nsis": {
     "oneClick": true,
-    "allowToChangeInstallationDirectory": false,
+    "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "My Lab LIMS"
-  }
+    "shortcutName": "My Lab LIMS",
+    "installerIcon": "public/icon.ico",
+    "uninstallerIcon": "public/icon.ico",
+    "installerHeaderIcon": "public/icon.ico",
+    "createUninstaller": true,
+    "displayLanguageSelector": true,
+    "multiLanguageInstaller": true,
+    "languages": ["English", "Arabic"]
+  },
+  "portable": {
+    "artifactName": "MyLab-LIMS-Portable-${version}.${ext}"
+  },
+  "mac": {
+    "target": ["dmg", "zip"],
+    "icon": "public/icon.icns"
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "icon": "public/icon.png"
+  },
+  "extraResources": [
+    {
+      "from": "public/",
+      "to": "public/",
+      "filter": ["**/*"]
+    }
+  ],
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "kingebrahimopq-create",
+      "repo": "Laboratory-",
+      "private": false
+    }
+  ]
 }
