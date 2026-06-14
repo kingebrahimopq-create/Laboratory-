@@ -60,26 +60,17 @@ name: Build Android Application
           uses: softprops/action-gh-release@v2
           with:
             tag_name: "v2.0.0"
-            name: "My Lab LIMS v2.0.0 - إصلاح Google Sign-in والبيانات الوهمية"
+            name: "My Lab LIMS v2.0.0 - Fix Google Sign-in"
             body: |
               ## التحديثات في هذا الإصدار
 
-              ### ✅ إصلاحات Google Sign-in
-              - تم استبدال signInWithPopup بـ signInWithRedirect لتجنب مشكلة IFrame
-              - تم إضافة معالجة نتيجة التحويل عند تحميل التطبيق
+              ### الإصلاحات الرئيسية
+              - تم إصلاح Google Sign-in (استبدال popup بـ redirect)
+              - تم إزالة البيانات الوهمية (kamal.mahlawi.demo, nile.lab.doctor)
               - الاتصال بـ Google Drive يعمل الآن بشكل صحيح
 
-              ### ✅ إزالة البيانات الوهمية
-              - تم حذف حسابات demo الوهمية (kamal.mahlawi.demo, nile.lab.doctor)
-              - يظهر الآن خطأ حقيقي عند فشل تسجيل الدخول بدلاً من البيانات الوهمية
-
-              ### 📱 تثبيت تطبيق Android
-              1. قم بتفعيل "تثبيت من مصادر غير معروفة" في الإعدادات
-              2. ثبّت ملف app-debug.apk
-
-              ### ⚠️ ملاحظة مهمة لـ Google Sign-in
-              لكي يعمل تسجيل الدخول بـ Google، يجب إضافة النطاق في:
-              **Firebase Console → Authentication → Settings → Authorized Domains**
+              ### تثبيت Android
+              فعّل "تثبيت من مصادر غير معروفة" ثم ثبّت app-debug.apk
             draft: false
             prerelease: false
             files: android/app/build/outputs/apk/debug/app-debug.apk
