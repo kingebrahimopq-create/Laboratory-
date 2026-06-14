@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS: DoctorSettings = {
     KIDNEY: 200
   },
   enableGoogleDriveBackup: true,
-  googleDriveToken: "DRIVE_AUTH_TOKEN_PLACEHOLDER",
+  googleDriveToken: "",
   googleDriveBackupInterval: "immediate",
   enableElectronicPrinter: true,
   allowResultCopying: true,
