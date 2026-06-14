@@ -63,74 +63,115 @@ app.on('activate', () => {
  * Setup IPC handlers for Google Drive integration
  */
 function setupIpcHandlers() {
-  // Google Sign-In via OAuth
-  ipcMain.handle('google-signin', async () => {
-    try {
-      // Check if we have stored tokens
-      const storedTokens = loadStoredTokens();
-      if (storedTokens && storedTokens.expiry_date > Date.now()) {
-        // Token still valid
-        const userInfo = await fetchGoogleUserInfo(storedTokens.access_token);
-        return {
-          success: true,
-          name: userInfo.name,
-          email: userInfo.email,
-          avatar: userInfo.picture,
-          accessToken: storedTokens.access_token
-        };
+  // Google Sign-In via OAuth (loopback redirect — no demo mode)
+    ipcMain.handle('google-signin', async () => {
+      try {
+        // Check if we have stored tokens that are still valid
+        const storedTokens = loadStoredTokens();
+        if (storedTokens && storedTokens.access_token && storedTokens.expiry_date > Date.now()) {
+          const userInfo = await fetchGoogleUserInfo(storedTokens.access_token);
+          if (userInfo.email) {
+            return {
+              success: true,
+              name: userInfo.name,
+              email: userInfo.email,
+              avatar: userInfo.picture || '',
+              accessToken: storedTokens.access_token
+            };
+          }
+        }
+
+        const clientId = getGoogleClientId();
+        if (!clientId) {
+          return {
+            success: false,
+            error: 'GOOGLE_CLIENT_ID غير مضبوط. يرجى الاتصال بالدعم الفني لإعداد التطبيق.'
+          };
+        }
+
+        // Use loopback redirect URI (RFC 8252 – OAuth for native apps)
+        const http = require('http');
+        const { OAuth2Client } = require('google-auth-library');
+
+        return await new Promise((resolve) => {
+          const server = http.createServer();
+          server.listen(0, '127.0.0.1', async () => {
+            const port = server.address().port;
+            const redirectUri = `http://127.0.0.1:${port}`;
+
+            googleOAuthClient = new OAuth2Client(
+              clientId,
+              process.env.GOOGLE_CLIENT_SECRET || '',
+              redirectUri
+            );
+
+            const authorizeUrl = googleOAuthClient.generateAuthUrl({
+              access_type: 'offline',
+              scope: [
+                'https://www.googleapis.com/auth/drive.file',
+                'https://www.googleapis.com/auth/userinfo.profile',
+                'https://www.googleapis.com/auth/userinfo.email'
+              ],
+              prompt: 'select_account'
+            });
+
+            shell.openExternal(authorizeUrl);
+
+            const timeout = setTimeout(() => {
+              server.close();
+              resolve({ success: false, error: 'انتهت مهلة تسجيل الدخول (دقيقتان). يرجى المحاولة مجدداً.' });
+            }, 120000);
+
+            server.on('request', async (req, res) => {
+              try {
+                const urlObj = new URL(req.url, `http://127.0.0.1:${port}`);
+                const code = urlObj.searchParams.get('code');
+                const errorParam = urlObj.searchParams.get('error');
+
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                if (code) {
+                  res.end('<html><body style="font-family:sans-serif;text-align:center;padding:50px;direction:rtl"><h2>✓ تم تسجيل الدخول بنجاح!</h2><p>يمكنك إغلاق هذه النافذة والعودة للتطبيق.</p></body></html>');
+                } else {
+                  res.end('<html><body style="font-family:sans-serif;text-align:center;padding:50px;direction:rtl"><h2>تم إلغاء تسجيل الدخول</h2></body></html>');
+                }
+
+                clearTimeout(timeout);
+                server.close();
+
+                if (errorParam || !code) {
+                  resolve({ success: false, error: errorParam || 'لم يتم استلام رمز التفويض.' });
+                  return;
+                }
+
+                const { tokens } = await googleOAuthClient.getToken(code);
+                cachedTokens = tokens;
+                storeTokens(tokens);
+
+                const userInfo = await fetchGoogleUserInfo(tokens.access_token);
+                resolve({
+                  success: true,
+                  name: userInfo.name || 'مستخدم',
+                  email: userInfo.email || '',
+                  avatar: userInfo.picture || '',
+                  accessToken: tokens.access_token
+                });
+              } catch (err) {
+                resolve({ success: false, error: err.message });
+              }
+            });
+
+            server.on('error', (err) => {
+              resolve({ success: false, error: 'فشل إنشاء خادم OAuth المحلي: ' + err.message });
+            });
+          });
+        });
+      } catch (error) {
+        console.error('Google sign-in error:', error);
+        return { success: false, error: error.message };
       }
+    });
 
-      // Need to authenticate - open OAuth URL in external browser
-      // This is a simplified flow - in production, use electron-google-oauth2
-      const clientId = getGoogleClientId();
-      if (!clientId) {
-        // Demo mode fallback
-        return {
-          success: true,
-          name: 'كمال المحلاوي (جوجل ديمو)',
-          email: 'kamal.mahlawi.demo@gmail.com',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-          accessToken: 'demo_token_' + Date.now()
-        };
-      }
-
-      // For production, use electron-google-oauth2 library
-      // This is a placeholder that shows the architecture
-      const { OAuth2Client } = require('google-auth-library');
-      googleOAuthClient = new OAuth2Client(
-        clientId,
-        '', // client secret not needed for installed apps with PKCE
-        'urn:ietf:wg:oauth:2.0:oob:auto'
-      );
-
-      const authorizeUrl = googleOAuthClient.generateAuthUrl({
-        access_type: 'offline',
-        scope: [
-          'https://www.googleapis.com/auth/drive.file',
-          'https://www.googleapis.com/auth/userinfo.profile',
-          'https://www.googleapis.com/auth/userinfo.email'
-        ],
-        prompt: 'select_account'
-      });
-
-      // Open in external browser
-      shell.openExternal(authorizeUrl);
-
-      // For now, return demo mode
-      return {
-        success: true,
-        name: 'كمال المحلاوي (جوجل ديمو)',
-        email: 'kamal.mahlawi.demo@gmail.com',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-        accessToken: 'demo_token_' + Date.now()
-      };
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // Upload to Google Drive
+      // Upload to Google Drive
   ipcMain.handle('upload-to-drive', async (event, { fileName, content }) => {
     try {
       const tokens = loadStoredTokens();
