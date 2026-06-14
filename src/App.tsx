@@ -35,6 +35,17 @@ import {
   setAutoSyncDataProvider,
   signInWithGoogle
 } from './services/drive-sync-service';
+  import {
+    initStorageAuth,
+    googleSignInStorage,
+    googleSignOutStorage,
+    startAutoSync,
+    triggerManualSync,
+    listBackups,
+    downloadBackup,
+    type SyncState,
+    type BackupEntry
+  } from './services/firebase-storage-service';
 
 export default function App() {
   // Toast notification system
@@ -84,6 +95,8 @@ export default function App() {
   const [googleUser, setGoogleUser] = useState<{ name: string; email: string; avatar: string } | null>(null);
   const [googleBackupProgress, setGoogleBackupProgress] = useState<number>(0);
   const [googleBackupStatus, setGoogleBackupStatus] = useState<string>('');
+  const [storageBackups, setStorageBackups] = useState<BackupEntry[]>([]);
+  const [syncState, setSyncState] = useState<SyncState>({ isSignedIn: false, user: null, lastSync: null, pendingChanges: false });
 
   // --- ONLINE/OFFLINE SYNC STATE ---
   const [isConnected, setIsConnected] = useState<boolean>(isOnline());
@@ -628,7 +641,7 @@ export default function App() {
     if (!googleUser) return;
     setIsSyncing(true);
     setGoogleBackupProgress(15);
-    setSyncStatusMessage('جاري تحضير البيانات والمزامنة مع Google Drive...');
+    setSyncStatusMessage('جاري تحضير البيانات والمزامنة مع Firebase Storage...');
 
     const backupData = {
       patients,
