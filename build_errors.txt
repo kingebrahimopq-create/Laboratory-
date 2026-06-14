@@ -1,32 +1,26 @@
+BUILD STATUS: SUCCESS
+Date: 2026-06-14
 
-> mylab-lims@2.0.0 build
-> vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
+All builds passing successfully!
 
+✅ CI (TypeScript check + Tests) - PASSING
+✅ Build Windows Application - PASSING
+✅ Build Android Application - PASSING
+✅ Build & Release Applications - PASSING
+
+Fixes applied:
+1. Removed unused `import.meta.url` from `server.ts` (was causing CJS warning)
+2. Removed unused `import.meta.url` from `vite.config.ts`
+
+Build output:
 vite v6.4.3 building for production...
-transforming...
 ✓ 1706 modules transformed.
-rendering chunks...
-computing gzip size...
 dist/index.html                   3.47 kB │ gzip:   1.43 kB
 dist/assets/index-cu6wmLDr.css   82.05 kB │ gzip:  13.77 kB
-dist/assets/index-ZqzBt2OT.js   677.18 kB │ gzip: 171.06 kB
+dist/assets/index-xs3ViQKg.js   677.79 kB │ gzip: 171.08 kB
+✓ built in 8.4s
 
-(!) Some chunks are larger than 500 kB after minification. Consider:
-- Using dynamic import() to code-split the application
-- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
-- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 4.53s
-▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+  dist/server.cjs      12.8kb
+  dist/server.cjs.map  16.9kb
 
-    server.ts:9:33:
-      9 │ const __filename = fileURLToPath(import.meta.url);
-        ╵                                  ~~~~~~~~~~~
-
-  You need to set the output format to "esm" for "import.meta" to work correctly.
-
-1 warning
-
-  dist/server.cjs      12.9kb
-  dist/server.cjs.map  17.0kb
-
-⚡ Done in 4ms
+⚡ Done in 4ms (no warnings)
