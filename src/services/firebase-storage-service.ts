@@ -1,7 +1,7 @@
 /**
    * Firebase Storage Backup Service
-   * - تسجيل الدخول بحساب Google عبر Firebase Auth (مجاني)
-   * - رفع تلقائي عند وجود تغييرات
+   * - تسجيل الدخول بحساب Google عبر Firebase Auth (مجاني بالكامل)
+   * - رفع تلقائي عند وجود تغييرات كل 5 دقائق
    * - استعادة أي نسخة سابقة
    */
   import { initializeApp, getApps } from 'firebase/app';
@@ -10,19 +10,19 @@
     onAuthStateChanged, signOut, User
   } from 'firebase/auth';
   import {
-    getStorage, ref, uploadString, getDownloadURL,
-    listAll, getMetadata, deleteObject
+    getStorage, ref, uploadString,
+    getDownloadURL, listAll, getMetadata, deleteObject
   } from 'firebase/storage';
   import firebaseConfig from '../../firebase-applet-config.json';
 
-  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const storage = getStorage(app);
+  const fbApp = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const fbAuth = getAuth(fbApp);
+  const fbStorage = getStorage(fbApp);
 
-  const provider = new GoogleAuthProvider();
-  provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-  provider.addScope('https://www.googleapis.com/auth/userinfo.email');
-  provider.setCustomParameters({ prompt: 'select_account' });
+  const gProvider = new GoogleAuthProvider();
+  gProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+  gProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
+  gProvider.setCustomParameters({ prompt: 'select_account' });
 
   export interface BackupEntry {
     fileName: string;
@@ -75,25 +75,23 @@
 
   export const initStorageAuth = (onStateChange: (s: SyncState) => void) => {
     _onSyncStateChange = onStateChange;
-    return onAuthStateChanged(auth, (user) => {
+    return onAuthStateChanged(fbAuth, (user) => {
       _currentUser = user;
       _notifyState();
     });
   };
 
   export const googleSignInStorage = async (): Promise<User> => {
-    const result = await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(fbAuth, gProvider);
     _currentUser = result.user;
-    // Store token for Drive API if needed later
-    const { GoogleAuthProvider: GAP } = await import('firebase/auth');
-    const cred = GAP.credentialFromResult(result);
+    const cred = GoogleAuthProvider.credentialFromResult(result);
     if (cred?.accessToken) localStorage.setItem('firebase_access_token', cred.accessToken);
     _notifyState();
     return result.user;
   };
 
   export const googleSignOutStorage = async () => {
-    await signOut(auth);
+    await signOut(fbAuth);
     _currentUser = null;
     localStorage.removeItem('firebase_access_token');
     _notifyState();
@@ -114,7 +112,7 @@
     const path = userBackupPath(fileName);
 
     try {
-      const storageRef = ref(storage, path);
+      const storageRef = ref(fbStorage, path);
       await uploadString(storageRef, JSON.stringify(data, null, 2), 'raw', {
         contentType: 'application/json',
         customMetadata: { uploadedAt: new Date().toISOString(), version: '2.0' }
@@ -126,28 +124,38 @@
       _notifyState();
       return { success: true, message: '✓ تم رفع النسخة الاحتياطية إلى Firebase بنجاح!', fileName };
     } catch (err: any) {
-      return { success: false, message: `❌ فشل الرفع: ${err.message}` };
+      console.error('Firebase upload error:', err);
+      return { success: false, message: `❌ فشل الرفع: ${err.message || 'خطأ غير معروف'}` };
     }
   };
 
   export const listBackups = async (): Promise<BackupEntry[]> => {
     if (!_currentUser || !navigator.onLine) return [];
     try {
-      const listRef = ref(storage, `backups/${_currentUser.uid}/`);
+      const listRef = ref(fbStorage, `backups/${_currentUser.uid}/`);
       const result = await listAll(listRef);
       const entries = await Promise.all(result.items.map(async (item) => {
         try {
           const meta = await getMetadata(item);
-          return { fileName: item.name, path: item.fullPath, uploadedAt: meta.customMetadata?.uploadedAt || meta.updated, sizeBytes: meta.size } as BackupEntry;
+          return {
+            fileName: item.name,
+            path: item.fullPath,
+            uploadedAt: meta.customMetadata?.uploadedAt || meta.updated,
+            sizeBytes: meta.size
+          } as BackupEntry;
         } catch { return null; }
       }));
-      return (entries.filter(Boolean) as BackupEntry[]).sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-    } catch { return []; }
+      return (entries.filter(Boolean) as BackupEntry[])
+        .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+    } catch (err) {
+      console.error('listBackups error:', err);
+      return [];
+    }
   };
 
   export const downloadBackup = async (entry: BackupEntry): Promise<any> => {
     if (!navigator.onLine) throw new Error('لا يوجد اتصال بالإنترنت');
-    const url = await getDownloadURL(ref(storage, entry.path));
+    const url = await getDownloadURL(ref(fbStorage, entry.path));
     const res = await fetch(url);
     if (!res.ok) throw new Error('فشل تنزيل النسخة الاحتياطية');
     return res.json();
@@ -156,7 +164,9 @@
   export const pruneOldBackups = async (keepCount = 10) => {
     const backups = await listBackups();
     if (backups.length <= keepCount) return;
-    await Promise.all(backups.slice(keepCount).map(b => deleteObject(ref(storage, b.path)).catch(() => {})));
+    await Promise.all(
+      backups.slice(keepCount).map(b => deleteObject(ref(fbStorage, b.path)).catch(() => {}))
+    );
   };
 
   export const triggerManualSync = async (data: any) => uploadBackup(data);
