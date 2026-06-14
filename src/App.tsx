@@ -502,7 +502,7 @@ export default function App() {
         setGoogleUser({
           name: result.user.displayName || 'Doctor',
           email: result.user.email || '',
-          avatar: result.user.photoURL || 'https://via.placeholder.com/150'
+          avatar: result.user.photoURL || ''
         });
         setGoogleBackupStatus('تم تسجيل الدخول الآمن بحساب Google الخاص بك بنجاح!');
         setTimeout(() => setGoogleBackupStatus(''), 2000);
