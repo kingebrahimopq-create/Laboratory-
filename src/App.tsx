@@ -485,22 +485,22 @@ export default function App() {
   // --- GOOGLE SIGN-IN CLOUD BACKUP ---
   const handleGoogleSignInOnHome = async () => {
     try {
-      const result = await googleSignIn();
+      const result = await googleSignInStorage();
       if (result) {
         setGoogleUser({
-          name: result.user.displayName || 'Doctor System Owner',
-          email: result.user.email || '',
-          avatar: result.user.photoURL || ''
+          name: result.displayName || 'Doctor System Owner',
+          email: result.email || '',
+          avatar: result.photoURL || ''
         });
         setLoginSession({ role: 'admin' });
       }
     } catch (err) {
       console.error(err);
-      if (confirm('⚠️ تعذر فتح نافذة تسجيل دخول Google المنبثقة بسبب قيود الإطار (IFrame) أو عدم اكتمال إعدادات الـ Client ID لـ Firebase.\n\nهل ترغب بتجاوز المشكلة وتسجيل الدخول عبر الحساب الطبي الافتراضي لـ Google (كمال المحلاوي) للمتابعة التجريبية الفورية؟')) {
+      if (confirm('⚠️ تعذر فتح نافذة تسجيل دخول Google المنبثقة بسبب قيود الإطار (IFrame) أو عدم اكتمال إعدادات الـ Client ID لـ Firebase.\n\nهل ترغب بتجاوز المشكلة وتسجيل الدخول عبر الحساب الطبي الافتراضي لـ Google (مستخدم')) {
         setGoogleUser({
-          name: 'كمال المحلاوي (جوجل ديمو)',
+          name: 'مستخدم',
           email: 'kamal.mahlawi.demo@gmail.com',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop'
+          avatar: ''
         });
         setLoginSession({ role: 'admin' });
       }
@@ -510,12 +510,12 @@ export default function App() {
   const handleGoogleSignInSimulate = async () => {
     setGoogleBackupStatus('جاري الاتصال والتحقق من سيرفرات Google OAuth المعتمدة...');
     try {
-      const result = await googleSignIn();
+      const result = await googleSignInStorage();
       if (result) {
         setGoogleUser({
-          name: result.user.displayName || 'Doctor',
-          email: result.user.email || '',
-          avatar: result.user.photoURL || ''
+          name: result.displayName || 'Doctor',
+          email: result.email || '',
+          avatar: result.photoURL || ''
         });
         setGoogleBackupStatus('تم تسجيل الدخول الآمن بحساب Google الخاص بك بنجاح!');
         setTimeout(() => setGoogleBackupStatus(''), 2000);
@@ -550,7 +550,7 @@ export default function App() {
     const fileContent = JSON.stringify(backupData, null, 2);
 
     try {
-      const accessToken = await getAccessToken();
+      const accessToken = localStorage.getItem('firebase_access_token');
       if (!accessToken) throw new Error("No access token");
 
       setGoogleBackupProgress(40);
@@ -610,7 +610,7 @@ export default function App() {
           setGoogleUser({
             name: result.name || 'مستخدم Google',
             email: result.email || '',
-            avatar: result.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+            avatar: result.avatar || ''
           });
           setSyncStatusMessage('✓ تم تسجيل الدخول الآمن بحساب Google بنجاح!');
           success('تم تسجيل الدخول بنجاح!');
@@ -625,9 +625,9 @@ export default function App() {
       console.error(err);
       // Demo mode fallback
       setGoogleUser({
-        name: 'كمال المحلاوي (جوجل ديمو)',
+        name: 'مستخدم',
         email: 'kamal.mahlawi.demo@gmail.com',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+        avatar: ''
       });
       setSyncStatusMessage('✓ تم تفعيل وضع العرض التجريبي');
       success('تم تسجيل الدخول بوضع العرض التجريبي');
