@@ -39,7 +39,7 @@ jobs:
         path: dist-electron/**/*.exe
 
     - name: Create or Update GitHub Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: "v1.0.0"
         name: "My Lab LIMS v1.0.0 (التطبيقات الطبية الجاهزة)"
