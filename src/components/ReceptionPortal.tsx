@@ -72,7 +72,7 @@ export default function ReceptionPortal({
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (patients.some(p => p.id === regId)) {
-      alert('عذراً! رقم الهوية هذا مسجل مسبقاً في قاعدة معلومات المختبر.');
+      setAlertMessage('⚠️ عذراً! رقم الهوية هذا مسجل مسبقاً في قاعدة معلومات المختبر.');
       return;
     }
     const newPat: Patient = {
