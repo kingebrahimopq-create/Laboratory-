@@ -490,7 +490,7 @@ export default function App() {
         setGoogleUser({
           name: result.user.displayName || 'Doctor System Owner',
           email: result.user.email || '',
-          avatar: result.user.photoURL || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=150&auto=format&fit=crop'
+          avatar: result.user.photoURL || ''
         });
         setLoginSession({ role: 'admin' });
       }
@@ -526,7 +526,7 @@ export default function App() {
         setGoogleUser({
           name: 'طبيب مختبرات النيل',
           email: 'nile.lab.doctor@gmail.com',
-          avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=150&auto=format&fit=crop'
+          avatar: ''
         });
         setGoogleBackupStatus('تم تفعيل وضع الربط التجريبي السحابي بنجاح!');
         setTimeout(() => setGoogleBackupStatus(''), 2000);
