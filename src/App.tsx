@@ -38,6 +38,7 @@ import {
 import {
   initStorageAuth,
   googleSignInStorage,
+  handleStorageRedirectResult,
   googleSignOutStorage,
   startAutoSync,
   triggerManualSync,
@@ -112,6 +113,20 @@ export default function App() {
   const [globalDiscountPercent, setGlobalDiscountPercent] = useState<number>(0);
 
   // Initialize printer connection on mount
+  // Handle Google Auth redirect result on app load (after signInWithRedirect returns)
+  useEffect(() => {
+    handleStorageRedirectResult().then(user => {
+      if (user) {
+        setGoogleUser({
+          name: user.displayName || 'مستخدم Google',
+          email: user.email || '',
+          avatar: user.photoURL || ''
+        });
+        setLoginSession({ role: 'admin' });
+      }
+    }).catch(console.error);
+  }, []);
+
   useEffect(() => {
     const initPrinter = async () => {
       const savedType = settings.printerConnectionType;
@@ -485,54 +500,23 @@ export default function App() {
   // --- GOOGLE SIGN-IN CLOUD BACKUP ---
   const handleGoogleSignInOnHome = async () => {
     try {
-      const result = await googleSignInStorage();
-      if (result) {
-        setGoogleUser({
-          name: result.displayName || 'Doctor System Owner',
-          email: result.email || '',
-          avatar: result.photoURL || ''
-        });
-        setLoginSession({ role: 'admin' });
-      }
+      await googleSignInStorage();
+      // ستتم إعادة التوجيه إلى Google — يتم التقاط النتيجة عند العودة عبر handleStorageRedirectResult
     } catch (err) {
       console.error(err);
-      if (confirm('⚠️ تعذر فتح نافذة تسجيل دخول Google المنبثقة بسبب قيود الإطار (IFrame) أو عدم اكتمال إعدادات الـ Client ID لـ Firebase.\n\nهل ترغب بتجاوز المشكلة وتسجيل الدخول عبر الحساب الطبي الافتراضي لـ Google (مستخدم')) {
-        setGoogleUser({
-          name: 'مستخدم',
-          email: 'kamal.mahlawi.demo@gmail.com',
-          avatar: ''
-        });
-        setLoginSession({ role: 'admin' });
-      }
+      error('فشل تسجيل الدخول بـ Google. يرجى المحاولة مجددًا.');
     }
   };
 
   const handleGoogleSignInSimulate = async () => {
-    setGoogleBackupStatus('جاري الاتصال والتحقق من سيرفرات Google OAuth المعتمدة...');
+    setGoogleBackupStatus('جاري توجيهك لتسجيل الدخول بحساب Google...');
     try {
-      const result = await googleSignInStorage();
-      if (result) {
-        setGoogleUser({
-          name: result.displayName || 'Doctor',
-          email: result.email || '',
-          avatar: result.photoURL || ''
-        });
-        setGoogleBackupStatus('تم تسجيل الدخول الآمن بحساب Google الخاص بك بنجاح!');
-        setTimeout(() => setGoogleBackupStatus(''), 2000);
-      }
+      await googleSignInStorage();
+      // ستتم إعادة التوجيه إلى Google — يتم التقاط النتيجة عند العودة
     } catch (err) {
       console.error(err);
-      if (confirm('⚠️ تعذر ربط حساب Google الفعلي حالياً. هل تفضل تفعيل الربط السحابي الافتراضي لغايات العرض التوضيحي السلس والنسخ الاحتياطي؟')) {
-        setGoogleUser({
-          name: 'طبيب مختبرات النيل',
-          email: 'nile.lab.doctor@gmail.com',
-          avatar: ''
-        });
-        setGoogleBackupStatus('تم تفعيل وضع الربط التجريبي السحابي بنجاح!');
-        setTimeout(() => setGoogleBackupStatus(''), 2000);
-      } else {
-        setGoogleBackupStatus('فشلت عملية المصادقة.');
-      }
+      setGoogleBackupStatus('');
+      error('فشل تسجيل الدخول. يرجى المحاولة مجددًا.');
     }
   };
 
@@ -623,14 +607,8 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      // Demo mode fallback
-      setGoogleUser({
-        name: 'مستخدم',
-        email: 'kamal.mahlawi.demo@gmail.com',
-        avatar: ''
-      });
-      setSyncStatusMessage('✓ تم تفعيل وضع العرض التجريبي');
-      success('تم تسجيل الدخول بوضع العرض التجريبي');
+      setSyncStatusMessage('❌ فشل تسجيل الدخول. يرجى المحاولة مجددًا.');
+      error('فشل تسجيل الدخول');
     } finally {
       setIsSyncing(false);
       setTimeout(() => setSyncStatusMessage(''), 3000);
