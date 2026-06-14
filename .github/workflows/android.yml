@@ -1,79 +1,73 @@
 name: Build Android Application
 
-  on:
-    push:
-      branches: [ "main" ]
-    workflow_dispatch:
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
 
-  permissions:
-    contents: write
+permissions:
+  contents: write
 
-  jobs:
-    build:
-      runs-on: ubuntu-latest
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-      steps:
-        - name: Checkout Repository
-          uses: actions/checkout@v4
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-        - name: Set up Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: 20
-            cache: 'npm'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
 
-        - name: Install Dependencies
-          run: npm install --legacy-peer-deps
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
 
-        - name: Build Web Project (Vite)
-          run: npm run build
+      - name: Build Web Project (Vite)
+        run: npm run build
 
-        - name: Set up JDK 17
-          uses: actions/setup-java@v4
-          with:
-            java-version: '17'
-            distribution: 'temurin'
-            cache: gradle
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
 
-        - name: Add Android Platform (if missing)
-          run: |
-            if [ ! -d "android" ]; then
-              npx cap add android
-            fi
+      - name: Add Android Platform (if missing)
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
 
-        - name: Capacitor Sync
-          run: npx cap sync android
+      - name: Capacitor Sync
+        run: npx cap sync android
 
-        - name: Build Android APK
-          working-directory: android
-          run: |
-            chmod +x gradlew
-            ./gradlew assembleDebug
+      - name: Build Android APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-        - name: Upload APK Artifact
-          uses: actions/upload-artifact@v4
-          with:
-            name: Laboratory-App-Debug
-            path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Laboratory-App-Debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
-        - name: Create or Update GitHub Release with APK
-          uses: softprops/action-gh-release@v2
-          with:
-            tag_name: "v2.0.0"
-            name: "My Lab LIMS v2.0.0 - Fix Google Sign-in"
-            body: |
-              ## التحديثات في هذا الإصدار
-
-              ### الإصلاحات الرئيسية
-              - تم إصلاح Google Sign-in (استبدال popup بـ redirect)
-              - تم إزالة البيانات الوهمية (kamal.mahlawi.demo, nile.lab.doctor)
-              - الاتصال بـ Google Drive يعمل الآن بشكل صحيح
-
-              ### تثبيت Android
-              فعّل "تثبيت من مصادر غير معروفة" ثم ثبّت app-debug.apk
-            draft: false
-            prerelease: false
-            files: android/app/build/outputs/apk/debug/app-debug.apk
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
+      - name: Create or Update GitHub Release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v2.0.0"
+          name: "My Lab LIMS v2.0.0 - Fix Google Sign-in"
+          body: |
+            ## التحديثات
+            - تم إصلاح Google Sign-in (redirect بدلاً من popup)
+            - تم إزالة البيانات الوهمية
+            - الاتصال بـ Google Drive يعمل الآن
+          draft: false
+          prerelease: false
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
