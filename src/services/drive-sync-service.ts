@@ -125,10 +125,19 @@ export const signInWithGoogle = async (): Promise<{
         });
         return result;
       }
-    } else if (currentPlatform === 'android') {
-      // For Android Capacitor - will be handled by native plugin
-      // For now, fallback to web-based OAuth
-      throw new Error('Android native auth not yet implemented. Use web fallback.');
+    } else {
+      // Web + Android Capacitor: use Firebase popup (works in WebView)
+      const mod = await import('./firebase-storage-service');
+      const user = await mod.googleSignInStorage();
+      if (user) {
+        const info = {
+          name: user.displayName || user.email || 'مستخدم',
+          email: user.email || '',
+          avatar: user.photoURL || ''
+        };
+        saveUserInfo(info);
+        return info;
+      }
     }
     return null;
   } catch (error) {

@@ -500,8 +500,16 @@ export default function App() {
   // --- GOOGLE SIGN-IN CLOUD BACKUP ---
   const handleGoogleSignInOnHome = async () => {
     try {
-      await googleSignInStorage();
-      // ستتم إعادة التوجيه إلى Google — يتم التقاط النتيجة عند العودة عبر handleStorageRedirectResult
+      const user = await googleSignInStorage();
+      if (user) {
+        setGoogleUser({
+          name: user.displayName || 'مستخدم Google',
+          email: user.email || '',
+          avatar: user.photoURL || ''
+        });
+        setLoginSession({ role: 'admin' });
+        success('تم تسجيل الدخول بنجاح!');
+      }
     } catch (err) {
       console.error(err);
       error('فشل تسجيل الدخول بـ Google. يرجى المحاولة مجددًا.');
@@ -509,10 +517,19 @@ export default function App() {
   };
 
   const handleGoogleSignInSimulate = async () => {
-    setGoogleBackupStatus('جاري توجيهك لتسجيل الدخول بحساب Google...');
+    setGoogleBackupStatus('جاري الاتصال بحساب Google...');
     try {
-      await googleSignInStorage();
-      // ستتم إعادة التوجيه إلى Google — يتم التقاط النتيجة عند العودة
+      const user = await googleSignInStorage();
+      if (user) {
+        setGoogleUser({
+          name: user.displayName || 'مستخدم Google',
+          email: user.email || '',
+          avatar: user.photoURL || ''
+        });
+        setGoogleBackupStatus('✓ تم تسجيل الدخول بنجاح!');
+        success('تم تسجيل الدخول بنجاح!');
+        setTimeout(() => setGoogleBackupStatus(''), 3000);
+      }
     } catch (err) {
       console.error(err);
       setGoogleBackupStatus('');
@@ -602,8 +619,17 @@ export default function App() {
           throw new Error(result?.error || 'فشل تسجيل الدخول');
         }
       } else {
-        // Fallback to Firebase Auth
-        await handleGoogleSignInSimulate();
+        // Web/Android: Firebase popup
+        const user = await googleSignInStorage();
+        if (user) {
+          setGoogleUser({
+            name: user.displayName || 'مستخدم Google',
+            email: user.email || '',
+            avatar: user.photoURL || ''
+          });
+          setSyncStatusMessage('✓ تم تسجيل الدخول الآمن بنجاح!');
+          success('تم تسجيل الدخول بنجاح!');
+        }
       }
     } catch (err) {
       console.error(err);
