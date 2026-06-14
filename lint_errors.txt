@@ -1,0 +1,4 @@
+
+> mylab-lims@2.0.0 lint
+> tsc --noEmit
+
