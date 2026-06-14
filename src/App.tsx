@@ -18,7 +18,7 @@ import { AppVersionInfo } from './components/VersionInfo';
 import PublicVerification from './components/PublicVerification';
 import PrintableReport from './components/PrintableReport';
 import LoginPortal from './components/LoginPortal';
-import { initAuth, googleSignIn, logout, getAccessToken } from './auth';
+import { initAuth, logout } from './auth';
 
 // Import new services and hooks
 import { getPrinterService, PrinterConnectionType } from './services/printer-service';
@@ -35,17 +35,17 @@ import {
   setAutoSyncDataProvider,
   signInWithGoogle
 } from './services/drive-sync-service';
-  import {
-    initStorageAuth,
-    googleSignInStorage,
-    googleSignOutStorage,
-    startAutoSync,
-    triggerManualSync,
-    listBackups,
-    downloadBackup,
-    type SyncState,
-    type BackupEntry
-  } from './services/firebase-storage-service';
+import {
+  initStorageAuth,
+  googleSignInStorage,
+  googleSignOutStorage,
+  startAutoSync,
+  triggerManualSync,
+  listBackups,
+  downloadBackup,
+  type SyncState,
+  type BackupEntry
+} from './services/firebase-storage-service';
 
 export default function App() {
   // Toast notification system
@@ -184,7 +184,7 @@ export default function App() {
         setGoogleUser({
           name: user.displayName || 'Doctor',
           email: user.email || '',
-          avatar: user.photoURL || 'https://via.placeholder.com/150'
+          avatar: user.photoURL || ''
         });
       },
       () => {
