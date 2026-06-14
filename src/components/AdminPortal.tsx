@@ -1178,14 +1178,8 @@ export default function AdminPortal({
                     const connectOAuth = async () => {
                       try {
                         setGdriveBackupLoading(true);
-                        const user = await googleSignInStorage();
-                        onUpdateSettings({
-                          ...settings,
-                          googleDriveToken: user.uid
-                        });
-                        setGdriveBackupLoading(false);
-                        setGdriveBackupSuccess(true);
-                        setTimeout(() => setGdriveBackupSuccess(false), 4000);
+                        await googleSignInStorage();
+                        // سيتم إعادة التوجيه إلى Google — معلومات المستخدم ستُلتقط عند العودة
                       } catch (err: any) {
                         console.error('Google sign-in failed:', err);
                         setGdriveBackupLoading(false);
