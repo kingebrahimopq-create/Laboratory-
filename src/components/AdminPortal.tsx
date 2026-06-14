@@ -3,6 +3,7 @@ import { LabTest, Patient, TestParameter, DoctorSettings, AppComplaint, Inventor
 import { ClinicalDatabase } from '../db/storage';
 import { GLUCOSE_HISTORICAL_TREND } from '../data';
 import { 
+import { googleSignInStorage, googleSignOutStorage } from '../services/firebase-storage-service';
   BarChart3, BadgeAlert, CheckCircle2, ShieldCheck, 
   Sparkles, FileText, Check, Settings2, ShieldQuestion, MessageSquare,
   Users2, AlertTriangle, Coins, TrendingUp, Calendar, HeartPulse, Lock, Shield, Cpu, Sliders,
@@ -70,12 +71,12 @@ export default function AdminPortal({
     setDbCheckSuccess(false);
 
     const logSteps = [
-      "جاري استدعاء محرك الأمان التلقائي العالي التشفير LIMS Secure Core...",
-      "الاتصال بقاعدة البيانات المحلية المأمنة والتحقق من التشفير المتماثل AES-256...",
-      "بدء مسح هيكلة جدول وصلاحيات المرضى (Patients Table Integrity)...",
-      "التحقق من فهارس جدول عينات المختبر وقنوات الاتصال بالأجهزة المرجعية LIS...",
-      "فحص ترخيص المنشأة: حالة الترخيص نشط ومصدّق 'مدى الحياة' (Lifetime Active checked)...",
-      "اكتمال الكشف الأمني والتحقق الذاتي: قاعدة البيانات مؤمنة بالكامل وسليمة 100%!"
+      "جاري فحص قاعدة البيانات المحلية...",
+      "فحص جدول المرضى وسلامة البيانات...",
+      "فحص جدول التحاليل والعينات...",
+      "فحص جدول المواعيد والإجراءات...",
+      "التحقق من تكامل التخزين المحلي...",
+      "اكتمل الفحص: قاعدة البيانات سليمة ✓"
     ];
 
     let currentStep = 0;
@@ -1165,37 +1166,34 @@ export default function AdminPortal({
               <div className="bg-white border border-slate-200 p-4 rounded-xl">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[11px] font-bold text-slate-700">الاتصال بحساب Google:</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${settings.googleDriveToken && settings.googleDriveToken !== 'DRIVE_AUTH_TOKEN_PLACEHOLDER' ? 'bg-emerald-50 text-emerald-700 animate-connected' : 'bg-rose-50 text-rose-700 animate-offline'}`}>
-                    {settings.googleDriveToken && settings.googleDriveToken !== 'DRIVE_AUTH_TOKEN_PLACEHOLDER' ? '✓ متصل بحساب Google' : '✗ غير متصل'}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${settings.googleDriveToken ? 'bg-emerald-50 text-emerald-700 animate-connected' : 'bg-rose-50 text-rose-700 animate-offline'}`}>
+                    {settings.googleDriveToken ? '✓ متصل بحساب Google' : '✗ غير متصل'}
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => {
-                    // Simulate Google OAuth sign-in flow
+                    // Real Firebase Google Sign-In
                     const connectOAuth = async () => {
                       try {
                         setGdriveBackupLoading(true);
-                        // In a real implementation, this would call googleSignIn() from auth.ts
-                        // For now, we simulate the OAuth flow
-                        setTimeout(() => {
-                          onUpdateSettings({
-                            ...settings,
-                            googleDriveToken: 'oauth_connected_' + Date.now()
-                          });
-                          setGdriveBackupLoading(false);
-                          setGdriveBackupSuccess(true);
-                          setTimeout(() => setGdriveBackupSuccess(false), 4000);
-                        }, 1500);
-                      } catch (err) {
-                        console.error('OAuth connection failed:', err);
+                        const user = await googleSignInStorage();
+                        onUpdateSettings({
+                          ...settings,
+                          googleDriveToken: user.uid
+                        });
+                        setGdriveBackupLoading(false);
+                        setGdriveBackupSuccess(true);
+                        setTimeout(() => setGdriveBackupSuccess(false), 4000);
+                      } catch (err: any) {
+                        console.error('Google sign-in failed:', err);
                         setGdriveBackupLoading(false);
                       }
                     };
                     connectOAuth();
                   }}
-                  disabled={gdriveBackupLoading || (settings.googleDriveToken !== 'DRIVE_AUTH_TOKEN_PLACEHOLDER' && !!settings.googleDriveToken)}
+                  disabled={gdriveBackupLoading || (!!settings.googleDriveToken)}
                   className="google-connect-btn w-full text-white font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -1204,14 +1202,14 @@ export default function AdminPortal({
                     <path fill="#FFFFFF" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#FFFFFF" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
-                  <span>{gdriveBackupLoading ? 'جاري الاتصال بـ Google...' : settings.googleDriveToken && settings.googleDriveToken !== 'DRIVE_AUTH_TOKEN_PLACEHOLDER' ? '✓ تم الاتصال بحساب Google' : 'تسجيل الدخول بـ Google للمزامنة السحابية'}</span>
+                  <span>{gdriveBackupLoading ? 'جاري الاتصال بـ Google...' : settings.googleDriveToken ? '✓ تم الاتصال بحساب Google' : 'تسجيل الدخول بـ Google للمزامنة السحابية'}</span>
                 </button>
 
-                {settings.googleDriveToken && settings.googleDriveToken !== 'DRIVE_AUTH_TOKEN_PLACEHOLDER' && (
+                {settings.googleDriveToken && (
                   <button
                     type="button"
                     onClick={() => {
-                      onUpdateSettings({ ...settings, googleDriveToken: 'DRIVE_AUTH_TOKEN_PLACEHOLDER' });
+                      googleSignOutStorage().then(() => onUpdateSettings({ ...settings, googleDriveToken: '' })).catch(() => onUpdateSettings({ ...settings, googleDriveToken: '' }));
                     }}
                     className="mt-2 w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded-xl text-xs transition-all"
                   >
@@ -1228,7 +1226,7 @@ export default function AdminPortal({
                 <button
                   type="button"
                   onClick={triggerGoogleDriveBackupManual}
-                  disabled={gdriveBackupLoading || !settings.googleDriveToken || settings.googleDriveToken === 'DRIVE_AUTH_TOKEN_PLACEHOLDER'}
+                  disabled={gdriveBackupLoading || !settings.googleDriveToken}
                   className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-55 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
                 >
                   <Cloud className="w-4 h-4 animate-bounce" />
