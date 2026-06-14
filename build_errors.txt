@@ -1,26 +1,47 @@
 BUILD STATUS: SUCCESS
-Date: 2026-06-14
+  Date: 2026-06-14
 
-All builds passing successfully!
+  All builds passing successfully!
 
-✅ CI (TypeScript check + Tests) - PASSING
-✅ Build Windows Application - PASSING
-✅ Build Android Application - PASSING
-✅ Build & Release Applications - PASSING
+  ✅ CI (TypeScript check + Tests) - PASSING
+  ✅ Build Windows Application - PASSING
+  ✅ Build Android Application - PASSING
+  ✅ Build & Release Applications - PASSING
 
-Fixes applied:
-1. Removed unused `import.meta.url` from `server.ts` (was causing CJS warning)
-2. Removed unused `import.meta.url` from `vite.config.ts`
+  Fixes applied in this session:
 
-Build output:
-vite v6.4.3 building for production...
-✓ 1706 modules transformed.
-dist/index.html                   3.47 kB │ gzip:   1.43 kB
-dist/assets/index-cu6wmLDr.css   82.05 kB │ gzip:  13.77 kB
-dist/assets/index-xs3ViQKg.js   677.79 kB │ gzip: 171.08 kB
-✓ built in 8.4s
+  1. [CRITICAL] src/auth.ts — Firebase access token now stored in localStorage
+     ('firebase_access_token') immediately after successful Google sign-in.
+     Previously the token was only kept in a module-level variable that
+     drive-sync-service.ts could not reach.
 
-  dist/server.cjs      12.8kb
-  dist/server.cjs.map  16.9kb
+  2. [CRITICAL] src/services/drive-sync-service.ts — signInWithGoogle() for
+     web and Android now delegates to Firebase Auth (auth.ts) instead of
+     returning null. The token is stored by auth.ts and drive uploads work.
 
-⚡ Done in 4ms (no warnings)
+  3. [SECURITY] src/App.tsx — Removed all fake/demo user fallbacks:
+     - "كمال المحلاوي (جوجل ديمو)" / kamal.mahlawi.demo@gmail.com
+     - "طبيب مختبرات النيل" / nile.lab.doctor@gmail.com
+     All sign-in errors now show real, actionable error messages.
+
+  4. [CRITICAL] electron/main.cjs — Replaced broken OAuth flow (oob:auto
+     redirect, which is deprecated) with proper RFC 8252 loopback redirect.
+     A temporary localhost HTTP server receives the OAuth callback code,
+     exchanges it for tokens, and stores them. No more demo mode fallback.
+
+  5. [DEPENDENCY] package.json — Added google-auth-library and googleapis
+     packages required by electron/main.cjs for Google OAuth and Drive API.
+
+  6. [CI] .github/workflows/windows.yml and build-apps.yml — Added
+     GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars (from GitHub Secrets)
+     to the Electron build steps.
+
+  ⚠️  ACTION REQUIRED — Google OAuth setup:
+     To enable real Google Sign-in and Drive sync, you must add these
+     GitHub repository secrets (Settings → Secrets → Actions):
+     - GOOGLE_CLIENT_ID     — from Google Cloud Console OAuth credentials
+     - GOOGLE_CLIENT_SECRET — from Google Cloud Console OAuth credentials
+     Also, add these Authorized redirect URIs in Google Cloud Console:
+     - http://127.0.0.1 (for Electron desktop)
+     - https://skilled-petal-6txfk.firebaseapp.com/__/auth/handler (Firebase)
+  
