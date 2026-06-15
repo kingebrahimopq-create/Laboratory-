@@ -1,12 +1,13 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mylab.android',
+  appId: 'app.mylab.lims',
   appName: 'MyLab LIMS',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    cleartext: false,
+    cleartext: true,
+    url: 'https://my-lab-lims-jyy52pp8e-mhm763517-7111s-projects.vercel.app'
   },
   android: {
     allowMixedContent: false,
