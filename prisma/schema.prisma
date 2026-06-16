@@ -7,68 +7,273 @@ datasource db {
   url       = env("DATABASE_URL")
 }
 
-model Patient {
-  id        String   @id
-  name      String
-  nameEn    String?  @map("name_en")
-  phone     String?
-  gender    String?
-  birthDate String?  @map("birth_date")
-  bloodType String?  @map("blood_type")
-  createdAt DateTime @default(now()) @map("created_at")
+// نموذج المستخدم (المالك والموظفين)
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?   // اختياري للمالك الذي يستخدم Google OAuth
+  role          UserRole  @default(STAFF)
+  permissions   String[]  @default([])
+  labId         String?
+  lab           Lab?      @relation(fields: [labId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
+  @@map("users")
+}
+
+enum UserRole {
+  OWNER
+  DOCTOR
+  ASSISTANT
+  STAFF
+}
+
+// نموذج المعمل
+model Lab {
+  id                    String    @id @default(cuid())
+  ownerEmail            String    @unique
+  labNameAr             String
+  labNameEn             String?
+  clinicName            String?
+  labPhone              String?
+  doctorName            String?
+  doctorLicense         String?
+  doctorEmail           String?
+  logoUrl               String?
+  primaryColor          String    @default("#0066cc")
+  secondaryColor        String    @default("#00cc99")
+  accentColor           String    @default("#ff6b6b")
+  enableNotifications   Boolean   @default(true)
+  enableQRCode          Boolean   @default(true)
+  enablePrinting        Boolean   @default(true)
+  currency              String    @default("EGP")
+  barcodeLocation       String    @default("bottom")
+  thermalWidth          String    @default("80mm")
+  customTestPricing     Json?
+  enableGoogleDriveBackup Boolean @default(false)
+  googleDriveToken      String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  users                 User[]
+  patients              Patient[]
+  tests                 Test[]
+  testTypes             TestType[]
+  discounts             Discount[]
+  printers              Printer[]
+  notifications         Notification[]
+
+  @@map("labs")
+}
+
+// نموذج المريض
+model Patient {
+  id            String    @id @default(cuid())
+  labId         String
+  lab           Lab       @relation(fields: [labId], references: [id], onDelete: Cascade)
+  name          String
+  nameEn        String?
+  phone         String
+  email         String?
+  gender        String?
+  birthDate     String?
+  bloodType     String?
+  address       String?
+  notes         String?
+  qrCode        String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  tests         Test[]
+  appointments  Appointment[]
+
+  @@unique([labId, phone])
   @@map("patients")
 }
 
+// نموذج نوع التحليل
+model TestType {
+  id            String    @id @default(cuid())
+  labId         String
+  lab           Lab       @relation(fields: [labId], references: [id], onDelete: Cascade)
+  nameAr        String
+  nameEn        String?
+  description   String?
+  basePrice     Decimal   @db.Decimal(10, 2)
+  category      String?
+  parameters    String[]
+  turnaroundTime String?   // مثل "24 ساعة"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  tests         Test[]
+
+  @@unique([labId, nameAr])
+  @@map("test_types")
+}
+
+// نموذج التحليل
+model Test {
+  id              String    @id @default(cuid())
+  labId           String
+  lab             Lab       @relation(fields: [labId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  testTypeId      String
+  testType        TestType  @relation(fields: [testTypeId], references: [id])
+  
+  status          TestStatus @default(PENDING)
+  sampleStatus    String?
+  requestDate     DateTime  @default(now())
+  completionDate  DateTime?
+  
+  basePrice       Decimal   @db.Decimal(10, 2)
+  discountId      String?
+  discount        Discount? @relation(fields: [discountId], references: [id])
+  finalPrice      Decimal   @db.Decimal(10, 2)
+  paidAmount      Decimal   @db.Decimal(10, 2) @default(0)
+  
+  results         String?   // JSON مع النتائج
+  parameters      Json?
+  notes           String?
+  
+  barcode         String?   @unique
+  qrToken         String?   @unique
+  
+  approvedBy      String?
+  approvedAt      DateTime?
+  printedAt       DateTime?
+  sentToPatientAt DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([labId, barcode])
+  @@map("tests")
+}
+
+enum TestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  APPROVED
+  PRINTED
+  SENT_TO_PATIENT
+  CANCELLED
+}
+
+// نموذج الخصم
+model Discount {
+  id            String    @id @default(cuid())
+  labId         String
+  lab           Lab       @relation(fields: [labId], references: [id], onDelete: Cascade)
+  
+  nameAr        String
+  nameEn        String?
+  description   String?
+  
+  type          DiscountType @default(PERCENTAGE)
+  value         Decimal   @db.Decimal(10, 2)
+  
+  applicableTestTypes String[] // قائمة أنواع التحاليل المطبقة عليها
+  maxUses       Int?
+  currentUses   Int       @default(0)
+  
+  startDate     DateTime?
+  endDate       DateTime?
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  tests         Test[]
+
+  @@map("discounts")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+// نموذج الطابعة
+model Printer {
+  id            String    @id @default(cuid())
+  labId         String
+  lab           Lab       @relation(fields: [labId], references: [id], onDelete: Cascade)
+  
+  nameAr        String
+  nameEn        String?
+  
+  type          PrinterType
+  connectionType String    // USB, Network, Bluetooth
+  ipAddress     String?
+  port          Int?
+  
+  isDefault     Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("printers")
+}
+
+enum PrinterType {
+  THERMAL
+  INKJET
+  LASER
+  LABEL
+}
+
+// نموذج الموعد
 model Appointment {
-  id          String   @id
-  patientName String   @map("patient_name")
-  patientPhone String?  @map("patient_phone")
-  date        String
-  time        String
-  type        String?
-  testType    String?  @map("test_type")
-  status      String?  @default("pending")
-  notes       String?
-  latitude    Float?
-  longitude   Float?
-  address     String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String    @id @default(cuid())
+  patientId     String
+  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  date          String
+  time          String
+  type          String?
+  testType      String?
+  status        String    @default("pending")
+  notes         String?
+  
+  latitude      Float?
+  longitude     Float?
+  address       String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@map("appointments")
 }
 
-model Setting {
-  id                        Int      @id @default(1)
-  labNameAr                 String?  @map("lab_name_ar")
-  labNameEn                 String?  @map("lab_name_en")
-  clinicName                String?  @map("clinic_name")
-  labPhone                  String?  @map("lab_phone")
-  doctorName                String?  @map("doctor_name")
-  doctorLicense             String?  @map("doctor_license")
-  receptionUsername         String?  @map("reception_username")
-  receptionPassword         String?  @map("reception_password")
-  doctorEmail               String?  @map("doctor_email")
-  doctorPasscode            String?  @map("doctor_passcode")
-  receptionPermissions      String[] @map("reception_permissions")
-  allowBiometricBypass      Boolean  @default(false) @map("allow_biometric_bypass")
-  enableTechnicianPlatform  Boolean  @default(true) @map("enable_technician_platform")
-  enableAndroidSimulator    Boolean  @default(false) @map("enable_android_simulator")
-  canUploadWithFiles        Boolean  @default(true) @map("can_upload_with_files")
-  canUploadWithImages       Boolean  @default(true) @map("can_upload_with_images")
-  canUploadWithTyping       Boolean  @default(true) @map("can_upload_with_typing")
-  customTestPricing         Json?    @map("custom_test_pricing")
-  enableGoogleDriveBackup   Boolean  @default(false) @map("enable_google_drive_backup")
-  googleDriveToken          String?  @map("google_drive_token")
-  googleDriveBackupInterval String?  @map("google_drive_backup_interval")
-  enableElectronicPrinter   Boolean  @default(true) @map("enable_electronic_printer")
-  allowResultCopying        Boolean  @default(true) @map("allow_result_copying")
-  printerConnectionType     String?  @map("printer_connection_type")
-  printerIpAddress          String?  @map("printer_ip_address")
-  currency                  String   @default("EGP")
-  barcodeLocation           String   @default("bottom") @map("barcode_location")
-  thermalWidth              String   @default("80mm") @map("thermal_width")
-  updatedAt                 DateTime @default(now()) @map("updated_at")
+// نموذج الإشعار
+model Notification {
+  id            String    @id @default(cuid())
+  labId         String
+  lab           Lab       @relation(fields: [labId], references: [id], onDelete: Cascade)
+  
+  type          NotificationType
+  title         String
+  message       String
+  recipientEmail String
+  
+  isRead        Boolean   @default(false)
+  readAt        DateTime?
+  
+  createdAt     DateTime  @default(now())
 
-  @@map("settings")
+  @@map("notifications")
+}
+
+enum NotificationType {
+  TEST_COMPLETED
+  TEST_APPROVED
+  TEST_READY_FOR_PRINT
+  TEST_SENT_TO_PATIENT
+  APPOINTMENT_REMINDER
+  SYSTEM_ALERT
 }
