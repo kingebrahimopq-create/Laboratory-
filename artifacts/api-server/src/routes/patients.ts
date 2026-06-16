@@ -3,13 +3,12 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 // البحث عن مريض
-router.post("/search", async (req: Request, res: Response): Promise<void> => {
+router.post("/search", async (req: Request, res: Response): Promise<any> => {
   try {
     const { phone, name } = req.body;
 
     if (!phone || !name) {
-      res.status(400).json({ error: "Phone and name are required" });
-      return;
+      return res.status(400).json({ error: "Phone and name are required" });
     }
 
     // هنا يتم البحث في قاعدة البيانات
@@ -20,28 +19,27 @@ router.post("/search", async (req: Request, res: Response): Promise<void> => {
       email: "patient@example.com",
     };
 
-    res.json(patient);
+    return res.json(patient);
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // الحصول على تحاليل المريض
-router.get("/:phone/tests", async (req: Request, res: Response): Promise<void> => {
+router.get("/:phone/tests", async (req: Request, res: Response): Promise<any> => {
   try {
     const { phone } = req.params;
 
     if (!phone) {
-      res.status(400).json({ error: "Phone is required" });
-      return;
+      return res.status(400).json({ error: "Phone is required" });
     }
 
     // هنا يتم جلب تحاليل المريض من قاعدة البيانات
     const tests: any[] = [];
 
-    res.json(tests);
+    return res.json(tests);
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

@@ -3,7 +3,7 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 // الحصول على إحصائيات المعمل
-router.get("/stats", async (req: Request, res: Response): Promise<void> => {
+router.get("/stats", async (req: Request, res: Response): Promise<any> => {
   try {
     // هنا يتم جلب الإحصائيات من قاعدة البيانات
     const stats = {
@@ -13,20 +13,19 @@ router.get("/stats", async (req: Request, res: Response): Promise<void> => {
       totalRevenue: 0,
     };
 
-    res.json(stats);
+    return res.json(stats);
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // تحميل نتيجة التحليل كـ PDF
-router.get("/tests/:testId/download", async (req: Request, res: Response): Promise<void> => {
+router.get("/tests/:testId/download", async (req: Request, res: Response): Promise<any> => {
   try {
     const { testId } = req.params;
 
     if (!testId) {
-      res.status(400).json({ error: "Test ID is required" });
-      return;
+      return res.status(400).json({ error: "Test ID is required" });
     }
 
     // هنا يتم توليد PDF للنتيجة
@@ -34,9 +33,9 @@ router.get("/tests/:testId/download", async (req: Request, res: Response): Promi
     res.setHeader("Content-Disposition", `attachment; filename="test-${testId}.pdf"`);
     
     // للآن نرجع ملف فارغ
-    res.send(Buffer.from("PDF content"));
+    return res.send(Buffer.from("PDF content"));
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
