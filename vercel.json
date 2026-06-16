@@ -1,8 +1,10 @@
 {
   "version": 2,
   "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "artifacts/mockup-sandbox/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.ts" },
-    { "source": "/(.*)", "destination": "/artifacts/mockup-sandbox/dist/$1" }
+    { "source": "/(.*)", "destination": "/artifacts/mockup-sandbox/dist/index.html" }
   ]
 }
