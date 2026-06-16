@@ -1,5 +1,6 @@
 import { useEffect, useState, type ComponentType } from "react";
-
+import { supabase } from "./lib/supabase";
+import { Login } from "./components/Login";
 import { modules as discoveredModules } from "./.generated/mockup-components";
 
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
@@ -129,7 +130,28 @@ function getPreviewPath(): string | null {
 }
 
 function App() {
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const previewPath = getPreviewPath();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen">جاري التحميل...</div>;
+
+  if (!session) {
+    return <Login />;
+  }
 
   if (previewPath) {
     return (

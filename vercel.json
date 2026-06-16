@@ -2,6 +2,7 @@
   "version": 2,
   "installCommand": "pnpm install --frozen-lockfile",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index.ts" }
+    { "source": "/api/(.*)", "destination": "/api/index.ts" },
+    { "source": "/(.*)", "destination": "/artifacts/mockup-sandbox/dist/$1" }
   ]
 }

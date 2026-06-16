@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+model Patient {
+  id        String   @id
+  name      String
+  nameEn    String?  @map("name_en")
+  phone     String?
+  gender    String?
+  birthDate String?  @map("birth_date")
+  bloodType String?  @map("blood_type")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("patients")
+}
+
+model Appointment {
+  id          String   @id
+  patientName String   @map("patient_name")
+  patientPhone String?  @map("patient_phone")
+  date        String
+  time        String
+  type        String?
+  testType    String?  @map("test_type")
+  status      String?  @default("pending")
+  notes       String?
+  latitude    Float?
+  longitude   Float?
+  address     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("appointments")
+}
+
+model Setting {
+  id                        Int      @id @default(1)
+  labNameAr                 String?  @map("lab_name_ar")
+  labNameEn                 String?  @map("lab_name_en")
+  clinicName                String?  @map("clinic_name")
+  labPhone                  String?  @map("lab_phone")
+  doctorName                String?  @map("doctor_name")
+  doctorLicense             String?  @map("doctor_license")
+  receptionUsername         String?  @map("reception_username")
+  receptionPassword         String?  @map("reception_password")
+  doctorEmail               String?  @map("doctor_email")
+  doctorPasscode            String?  @map("doctor_passcode")
+  receptionPermissions      String[] @map("reception_permissions")
+  allowBiometricBypass      Boolean  @default(false) @map("allow_biometric_bypass")
+  enableTechnicianPlatform  Boolean  @default(true) @map("enable_technician_platform")
+  enableAndroidSimulator    Boolean  @default(false) @map("enable_android_simulator")
+  canUploadWithFiles        Boolean  @default(true) @map("can_upload_with_files")
+  canUploadWithImages       Boolean  @default(true) @map("can_upload_with_images")
+  canUploadWithTyping       Boolean  @default(true) @map("can_upload_with_typing")
+  customTestPricing         Json?    @map("custom_test_pricing")
+  enableGoogleDriveBackup   Boolean  @default(false) @map("enable_google_drive_backup")
+  googleDriveToken          String?  @map("google_drive_token")
+  googleDriveBackupInterval String?  @map("google_drive_backup_interval")
+  enableElectronicPrinter   Boolean  @default(true) @map("enable_electronic_printer")
+  allowResultCopying        Boolean  @default(true) @map("allow_result_copying")
+  printerConnectionType     String?  @map("printer_connection_type")
+  printerIpAddress          String?  @map("printer_ip_address")
+  currency                  String   @default("EGP")
+  barcodeLocation           String   @default("bottom") @map("barcode_location")
+  thermalWidth              String   @default("80mm") @map("thermal_width")
+  updatedAt                 DateTime @default(now()) @map("updated_at")
+
+  @@map("settings")
+}
