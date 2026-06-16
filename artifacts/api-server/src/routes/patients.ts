@@ -3,7 +3,7 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 // البحث عن مريض
-router.post("/search", async (req: Request, res: Response): Promise<any> => {
+router.post("/search", async (req: Request, res: Response) => {
   try {
     const { phone, name } = req.body;
 
@@ -11,7 +11,6 @@ router.post("/search", async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ error: "Phone and name are required" });
     }
 
-    // هنا سيتم البحث الفعلي في قاعدة البيانات لاحقاً
     const patient = {
       id: "patient-1",
       name,
@@ -26,7 +25,7 @@ router.post("/search", async (req: Request, res: Response): Promise<any> => {
 });
 
 // الحصول على تحاليل المريض
-router.get("/:phone/tests", async (req: Request, res: Response): Promise<any> => {
+router.get("/:phone/tests", async (req: Request, res: Response) => {
   try {
     const { phone } = req.params;
 
@@ -34,17 +33,15 @@ router.get("/:phone/tests", async (req: Request, res: Response): Promise<any> =>
       return res.status(400).json({ error: "Phone is required" });
     }
 
-    // هنا سيتم جلب التحاليل الفعلية من قاعدة البيانات لاحقاً
     const tests: any[] = [];
-
     return res.json(tests);
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// إضافة مريض جديد (متطلب جديد)
-router.post("/register", async (req: Request, res: Response): Promise<any> => {
+// إضافة مريض جديد
+router.post("/register", async (req: Request, res: Response) => {
   try {
     const { name, phone, email } = req.body;
     
@@ -52,7 +49,6 @@ router.post("/register", async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ error: "Name and phone are required" });
     }
 
-    // منطق الإضافة لقاعدة البيانات سيتم وضعه هنا
     return res.status(201).json({ message: "Patient registered successfully", patient: { name, phone, email } });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
