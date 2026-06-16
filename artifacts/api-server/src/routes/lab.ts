@@ -3,7 +3,7 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 // الحصول على إحصائيات المعمل
-router.get("/stats", async (req: Request, res: Response) => {
+router.get("/stats", async (req: Request, res: Response): Promise<void> => {
   try {
     // هنا يتم جلب الإحصائيات من قاعدة البيانات
     const stats = {
@@ -20,9 +20,14 @@ router.get("/stats", async (req: Request, res: Response) => {
 });
 
 // تحميل نتيجة التحليل كـ PDF
-router.get("/tests/:testId/download", async (req: Request, res: Response) => {
+router.get("/tests/:testId/download", async (req: Request, res: Response): Promise<void> => {
   try {
     const { testId } = req.params;
+
+    if (!testId) {
+      res.status(400).json({ error: "Test ID is required" });
+      return;
+    }
 
     // هنا يتم توليد PDF للنتيجة
     res.setHeader("Content-Type", "application/pdf");

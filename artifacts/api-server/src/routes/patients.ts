@@ -3,7 +3,7 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 // البحث عن مريض
-router.post("/search", async (req: Request, res: Response) => {
+router.post("/search", async (req: Request, res: Response): Promise<void> => {
   try {
     const { phone, name } = req.body;
 
@@ -13,7 +13,6 @@ router.post("/search", async (req: Request, res: Response) => {
     }
 
     // هنا يتم البحث في قاعدة البيانات
-    // للآن نرجع مريض وهمي للاختبار
     const patient = {
       id: "patient-1",
       name,
@@ -28,12 +27,16 @@ router.post("/search", async (req: Request, res: Response) => {
 });
 
 // الحصول على تحاليل المريض
-router.get("/:phone/tests", async (req: Request, res: Response) => {
+router.get("/:phone/tests", async (req: Request, res: Response): Promise<void> => {
   try {
     const { phone } = req.params;
 
+    if (!phone) {
+      res.status(400).json({ error: "Phone is required" });
+      return;
+    }
+
     // هنا يتم جلب تحاليل المريض من قاعدة البيانات
-    // للآن نرجع قائمة فارغة
     const tests: any[] = [];
 
     res.json(tests);
