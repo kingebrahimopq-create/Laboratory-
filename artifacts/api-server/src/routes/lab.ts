@@ -3,7 +3,7 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 // الحصول على إحصائيات المعمل
-router.get("/stats", async (req: Request, res: Response): Promise<any> => {
+router.get("/stats", async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // هنا يتم جلب الإحصائيات من قاعدة البيانات
     const stats = {
@@ -20,7 +20,7 @@ router.get("/stats", async (req: Request, res: Response): Promise<any> => {
 });
 
 // تحميل نتيجة التحليل كـ PDF
-router.get("/tests/:testId/download", async (req: Request, res: Response): Promise<any> => {
+router.get("/tests/:testId/download", async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { testId } = req.params;
 

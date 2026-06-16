@@ -3,7 +3,7 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 // البحث عن مريض
-router.post("/search", async (req: Request, res: Response): Promise<any> => {
+router.post("/search", async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { phone, name } = req.body;
 
@@ -26,7 +26,7 @@ router.post("/search", async (req: Request, res: Response): Promise<any> => {
 });
 
 // الحصول على تحاليل المريض
-router.get("/:phone/tests", async (req: Request, res: Response): Promise<any> => {
+router.get("/:phone/tests", async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { phone } = req.params;
 
