@@ -18,7 +18,7 @@ import { AppVersionInfo } from './components/VersionInfo';
 import PublicVerification from './components/PublicVerification';
 import PrintableReport from './components/PrintableReport';
 import LoginPortal from './components/LoginPortal';
-import { initAuth, logout } from './auth';
+import { initAuth, logout, handleAuthRedirectResult as handleSupabaseRedirect } from './auth';
 
 // Import new services and hooks
 import { getPrinterService, PrinterConnectionType } from './services/printer-service';
@@ -115,12 +115,13 @@ export default function App() {
   // Initialize printer connection on mount
   // Handle Google Auth redirect result on app load (after signInWithRedirect returns)
   useEffect(() => {
-    handleStorageRedirectResult().then(user => {
-      if (user) {
+    handleSupabaseRedirect().then(result => {
+      if (result && result.user) {
+        const user = result.user;
         setGoogleUser({
-          name: user.displayName || 'مستخدم Google',
+          name: user.user_metadata?.full_name || user.email || 'مستخدم Google',
           email: user.email || '',
-          avatar: user.photoURL || ''
+          avatar: user.user_metadata?.avatar_url || ''
         });
         setLoginSession({ role: 'admin' });
       }
@@ -144,7 +145,7 @@ export default function App() {
     initPrinter();
 
     // Initialize database adapter
-    DatabaseAdapter.create(StorageType.LOCAL);
+    DatabaseAdapter.getInstance().connect();
 
     return () => {
       printerService.disconnect();
@@ -197,9 +198,9 @@ export default function App() {
     const unsubscribe = initAuth(
       (user, token) => {
         setGoogleUser({
-          name: user.displayName || 'Doctor',
+          name: user.user_metadata?.full_name || user.email || 'Doctor',
           email: user.email || '',
-          avatar: user.photoURL || ''
+          avatar: user.user_metadata?.avatar_url || ''
         });
       },
       () => {

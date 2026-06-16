@@ -1,65 +1,81 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
-import firebaseConfig from '../firebase-applet-config.json';
+import { createClient } from '@supabase/supabase-js';
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const provider = new GoogleAuthProvider();
-provider.addScope('https://www.googleapis.com/auth/drive.file');
-provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-provider.addScope('https://www.googleapis.com/auth/userinfo.email');
-provider.setCustomParameters({ prompt: 'select_account' });
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 let cachedAccessToken: string | null = null;
 
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthSuccess?: (user: any, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      const storedToken = localStorage.getItem('firebase_access_token');
-      if (storedToken && cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (storedToken) {
-        cachedAccessToken = storedToken;
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else {
-        if (onAuthFailure) onAuthFailure();
-      }
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      cachedAccessToken = session.access_token;
+      localStorage.setItem('supabase_access_token', cachedAccessToken);
+      if (onAuthSuccess) onAuthSuccess(session.user, cachedAccessToken);
     } else {
       cachedAccessToken = null;
-      localStorage.removeItem('firebase_access_token');
+      localStorage.removeItem('supabase_access_token');
       if (onAuthFailure) onAuthFailure();
     }
   });
+
+  return () => subscription.unsubscribe();
 };
 
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+export const googleSignIn = async () => {
   try {
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (credential?.accessToken) {
-      cachedAccessToken = credential.accessToken;
-      localStorage.setItem('firebase_access_token', cachedAccessToken);
-    }
-    return { user: result.user, accessToken: cachedAccessToken || '' };
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+        redirectTo: window.location.origin,
+      },
+    });
+    
+    if (error) throw error;
+    return data;
   } catch (error: any) {
-    console.error('Sign in popup error:', error);
+    console.error('Sign in error:', error);
     throw error;
   }
 };
 
-// Kept for backward compat — popup flow doesn't need redirect handling
-export const handleAuthRedirectResult = async () => null;
+export const handleAuthRedirectResult = async () => {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error('Error getting session:', error);
+    return null;
+  }
+  if (session) {
+    cachedAccessToken = session.access_token;
+    localStorage.setItem('supabase_access_token', cachedAccessToken);
+    return { user: session.user, accessToken: cachedAccessToken };
+  }
+  return null;
+};
 
 export const getAccessToken = async (): Promise<string | null> => {
-  return cachedAccessToken || localStorage.getItem('firebase_access_token');
+  if (cachedAccessToken) return cachedAccessToken;
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    cachedAccessToken = session.access_token;
+    localStorage.setItem('supabase_access_token', cachedAccessToken);
+    return cachedAccessToken;
+  }
+  
+  return localStorage.getItem('supabase_access_token');
 };
 
 export const logout = async () => {
-  await auth.signOut();
+  await supabase.auth.signOut();
   cachedAccessToken = null;
-  localStorage.removeItem('firebase_access_token');
+  localStorage.removeItem('supabase_access_token');
 };

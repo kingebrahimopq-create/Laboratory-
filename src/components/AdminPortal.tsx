@@ -8,7 +8,7 @@ import {
   Users2, AlertTriangle, Coins, TrendingUp, Calendar, HeartPulse, Lock, Shield, Cpu, Sliders,
   Printer, Database, Cloud, Copy, Plus, Minus, Trash2, Search, Package, RefreshCw
 } from 'lucide-react';
-import { googleSignInStorage, googleSignOutStorage } from '../services/firebase-storage-service';
+import { googleSignIn as googleSignInStorage, logout as googleSignOutStorage } from '../auth';
 
 interface AdminPortalProps {
   tests: LabTest[];
@@ -1174,7 +1174,7 @@ export default function AdminPortal({
                 <button
                   type="button"
                   onClick={() => {
-                    // Real Firebase Google Sign-In
+                    // Real Supabase Google Sign-In
                     const connectOAuth = async () => {
                       try {
                         setGdriveBackupLoading(true);
