@@ -56,3 +56,4 @@ router.post("/register", async (req: Request, res: Response) => {
 });
 
 export default router;
+// Force rebuild - Tue Jun 16 20:37:05 UTC 2026
