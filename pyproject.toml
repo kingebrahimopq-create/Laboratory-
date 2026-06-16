@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mylab-lims"
+version = "2.0.0"
+description = "My Lab LIMS - Laboratory Information Management System"
+
+[tool.vercel]
+# This project is a Node.js/Express application, not Python/Django
+# The build is handled by npm/package.json
+buildCommand = "npm run build"
+outputDirectory = "dist"
