@@ -8,7 +8,8 @@ router.post("/search", async (req: Request, res: Response) => {
     const { phone, name } = req.body;
 
     if (!phone || !name) {
-      return res.status(400).json({ error: "Phone and name are required" });
+      res.status(400).json({ error: "Phone and name are required" });
+      return;
     }
 
     // هنا يتم البحث في قاعدة البيانات
