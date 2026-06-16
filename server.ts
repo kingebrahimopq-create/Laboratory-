@@ -140,12 +140,9 @@ app.post("/api/printer/connect", async (req, res) => {
   // In a production environment, this would establish a real connection
   // For now, we simulate a successful connection
   res.json({
-    success: true,
-    status: 'connected',
-    type,
-    ipAddress,
-    port: port || 9100,
-    message: 'Printer connection established successfully'
+    success: false,
+    status: 'error',
+    message: 'يجب تكوين الطابعة يدوياً في هذا الإصدار'
   });
 });
 
@@ -167,11 +164,11 @@ app.post("/api/printer/print", async (req, res) => {
 
 app.get("/api/printer/status", async (_req, res) => {
   res.json({
-    connected: true,
-    status: 'online',
-    type: 'network',
-    paperStatus: 'ok',
-    lastError: null
+    connected: false,
+    status: 'offline',
+    type: 'disconnected',
+    paperStatus: 'unknown',
+    lastError: 'يجب تسجيل الدخول وتكوين الطابعة أولاً'
   });
 });
 

@@ -176,13 +176,12 @@ export class PrinterService {
         return true;
       }
       
-      // Fallback: simulate connection for demo
-      this.updateStatus(true, 'online');
-      return true;
+      // Fallback: do not simulate connection in production
+      this.updateStatus(false, 'offline', 'فشل الاتصال التلقائي');
+      return false;
     } catch (error) {
-      // In demo mode, simulate success
-      this.updateStatus(true, 'online');
-      return true;
+      this.updateStatus(false, 'error', String(error));
+      return false;
     }
   }
 

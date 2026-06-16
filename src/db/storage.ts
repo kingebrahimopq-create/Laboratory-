@@ -36,10 +36,10 @@ const DEFAULT_SETTINGS: DoctorSettings = {
   enableGoogleDriveBackup: true,
   googleDriveToken: "",
   googleDriveBackupInterval: "immediate",
-  enableElectronicPrinter: true,
+  enableElectronicPrinter: false,
   allowResultCopying: true,
-  printerConnectionType: "network",
-  printerIpAddress: "192.168.1.100",
+  printerConnectionType: "disconnected",
+  printerIpAddress: "",
   currency: "EGP",
   barcodeLocation: "bottom",
   thermalWidth: "80mm"
