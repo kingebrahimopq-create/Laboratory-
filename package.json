@@ -11,7 +11,7 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build",
     "start": "node dist/server.cjs",
     "preview": "node dist/server.cjs",
     "clean": "rm -rf dist server.js dist-electron android ios",
@@ -32,7 +32,7 @@
     "electron:build": "npm run build && electron-builder --win",
     "android:init": "npx cap add android || true && npx cap sync android",
     "android:build": "npm run build && npm run android:init && cd android && ./gradlew assembleDebug",
-    "postinstall": "npx cap sync || true"
+    "postinstall": "npm install vite --no-save && npx cap sync || true"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
