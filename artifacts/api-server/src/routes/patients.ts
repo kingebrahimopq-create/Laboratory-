@@ -3,13 +3,12 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 // البحث عن مريض
-router.post("/search", async (req: Request, res: Response): Promise<void> => {
+router.post("/search", async (req: Request, res: Response): Promise<any> => {
   try {
     const { phone, name } = req.body;
 
     if (!phone || !name) {
-      res.status(400).json({ error: "Phone and name are required" });
-      return;
+      return res.status(400).json({ error: "Phone and name are required" });
     }
 
     // هنا سيتم البحث الفعلي في قاعدة البيانات لاحقاً
@@ -20,45 +19,43 @@ router.post("/search", async (req: Request, res: Response): Promise<void> => {
       email: "patient@example.com",
     };
 
-    res.json(patient);
+    return res.json(patient);
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // الحصول على تحاليل المريض
-router.get("/:phone/tests", async (req: Request, res: Response): Promise<void> => {
+router.get("/:phone/tests", async (req: Request, res: Response): Promise<any> => {
   try {
     const { phone } = req.params;
 
     if (!phone) {
-      res.status(400).json({ error: "Phone is required" });
-      return;
+      return res.status(400).json({ error: "Phone is required" });
     }
 
     // هنا سيتم جلب التحاليل الفعلية من قاعدة البيانات لاحقاً
     const tests: any[] = [];
 
-    res.json(tests);
+    return res.json(tests);
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // إضافة مريض جديد (متطلب جديد)
-router.post("/register", async (req: Request, res: Response): Promise<void> => {
+router.post("/register", async (req: Request, res: Response): Promise<any> => {
   try {
     const { name, phone, email } = req.body;
     
     if (!name || !phone) {
-      res.status(400).json({ error: "Name and phone are required" });
-      return;
+      return res.status(400).json({ error: "Name and phone are required" });
     }
 
     // منطق الإضافة لقاعدة البيانات سيتم وضعه هنا
-    res.status(201).json({ message: "Patient registered successfully", patient: { name, phone, email } });
+    return res.status(201).json({ message: "Patient registered successfully", patient: { name, phone, email } });
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
