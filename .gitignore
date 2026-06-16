@@ -56,3 +56,4 @@ out/
 *.tsbuildinfo
 .eslintcache
 .stylelintcache
+.vercel
