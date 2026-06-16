@@ -3,7 +3,6 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm run build",
   "outputDirectory": "artifacts/mockup-sandbox/dist",
-  "ignoreBuildErrors": true,
   "typescript": {
     "ignoreBuildErrors": true
   },
