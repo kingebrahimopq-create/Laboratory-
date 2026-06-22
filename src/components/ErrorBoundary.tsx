@@ -1,18 +1,19 @@
 import React from 'react';
 
+interface Props { children?: React.ReactNode; }
 interface State { hasError: boolean; error: Error | null; }
 
-export class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
-  constructor(props: React.PropsWithChildren) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+export class ErrorBoundary extends React.Component<Props, State> {
+  state: State = { hasError: false, error: null };
+
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
+
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error, info);
   }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -25,9 +26,10 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
               حدث خطأ غير متوقع
             </h2>
             <p style={{ color:'#64748b', fontSize:'0.875rem', marginBottom:'1.5rem', lineHeight:1.6 }}>
-              {this.state.error?.message || 'خطأ مجهول'}
+              {this.state.error?.message ?? 'خطأ مجهول'}
             </p>
-            <button onClick={() => window.location.reload()}
+            <button
+              onClick={() => window.location.reload()}
               style={{ background:'#0f766e', color:'#fff', border:'none', borderRadius:'10px',
                 padding:'0.6rem 1.5rem', cursor:'pointer', fontSize:'0.875rem', fontWeight:600 }}>
               إعادة تحميل التطبيق
