@@ -40,53 +40,9 @@ try {
 }
 
 // In-memory data store for local backup mode (if Firebase credentials are not fully active or configured)
-const localVaccinations: any[] = [
-  {
-    id: "v_1",
-    patientName: "أحمد العتيبي",
-    patientId: "P1001",
-    vaccineType: "لقاح كورونا (Pfizer)",
-    vaccineDate: "2026-05-12",
-    doseNumber: 1,
-    status: "Completed",
-    notes: "لا توجد مضاعفات جانبية",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "v_2",
-    patientName: "نورة القحطاني",
-    patientId: "P1002",
-    vaccineType: "لقاح الإنفلونزا الموسمية",
-    vaccineDate: "2026-06-01",
-    doseNumber: 1,
-    status: "Completed",
-    notes: "الحقنة السنوية الاعتيادية",
-    createdAt: new Date().toISOString()
-  }
-];
+const localVaccinations: any[] = [];
 
-const localLabResults: any[] = [
-  {
-    id: "l_1",
-    patientName: "أحمد العتيبي",
-    testType: "تحليل الدم الكامل (CBC)",
-    testValue: "Hgb: 14.2 g/dL, WBC: 6.5 x10^3/uL",
-    status: "Released",
-    testDate: "2026-05-12",
-    notes: "النتائج طبيعية جداً ووفق المعدل",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "l_2",
-    patientName: "فاطمة محمد",
-    testType: "فحص السكري الصيامي (Glucose)",
-    testValue: "92 mg/dL",
-    status: "Released",
-    testDate: "2026-06-18",
-    notes: "نسبة طبيعية ومثالية",
-    createdAt: new Date().toISOString()
-  }
-];
+const localLabResults: any[] = [];
 
 // Helper to interact with git/github updater properties
 let currentCommitSha = "7D087AF7"; // Initially mocked with latest PR hash, changes when a real GitHub sync is run.
