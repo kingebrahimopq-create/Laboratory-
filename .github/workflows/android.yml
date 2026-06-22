@@ -11,7 +11,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,11 +27,11 @@ jobs:
       - name: Build Web Project (Vite)
         run: npm run build
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: '21'
+          distribution: 'zulu'
           cache: gradle
 
       - name: Add Android Platform (if missing)
@@ -44,11 +43,19 @@ jobs:
       - name: Capacitor Sync
         run: npx cap sync android
 
+      - name: Regenerate Gradle Wrapper (fix LFS pointer issue)
+        working-directory: android
+        run: |
+          GRADLE_VERSION=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
+          curl -fsSL -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+          unzip -q /tmp/gradle.zip -d /tmp/gradle-dist
+          /tmp/gradle-dist/gradle-${GRADLE_VERSION}/bin/gradle wrapper --gradle-version ${GRADLE_VERSION}
+
       - name: Build Android APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -60,14 +67,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v2.0.0"
-          name: "My Lab LIMS v2.0.0 - Fix Google Sign-in"
+          name: "My Lab LIMS v2.0.0 - نظام إدارة المختبرات"
           body: |
             ## التحديثات في هذا الإصدار
 
-            ### الإصلاحات الرئيسية
-            - تم إصلاح Google Sign-in (استبدال popup بـ redirect)
-            - تم إزالة البيانات الوهمية (kamal.mahlawi.demo, nile.lab.doctor)
-            - الاتصال بـ Google Drive يعمل الآن بشكل صحيح
+            - إصلاح Google Sign-in (localhost مضاف لـ Firebase Authorized Domains)
+            - إصلاح تسجيل الدخول بالبريد وكلمة المرور
+            - دعم Firebase Storage للنسخ الاحتياطي
 
             ### تثبيت Android
             فعّل "تثبيت من مصادر غير معروفة" ثم ثبّت app-debug.apk
