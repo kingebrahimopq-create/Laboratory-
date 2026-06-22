@@ -56,6 +56,8 @@ jobs:
       - name: Build Windows Installer
         run: npx electron-builder --win --x64 --publish never
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
           NODE_ENV: production
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
@@ -87,9 +89,16 @@ jobs:
         run: npm install --legacy-peer-deps
       - name: Build Web Assets
         run: npm run build
-      - name: Capacitor Add and Sync Android
+      - name: Capacitor Setup Android
         run: |
-          npx cap add android 2>/dev/null || true
+          if [ -f android/app/google-services.json ]; then
+            cp android/app/google-services.json /tmp/google-services.json
+          fi
+          rm -rf android
+          npx cap add android
+          if [ -f /tmp/google-services.json ]; then
+            cp /tmp/google-services.json android/app/google-services.json
+          fi
           npx cap sync android
           npx cap copy android
       - name: Make gradlew Executable
