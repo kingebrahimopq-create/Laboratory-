@@ -562,13 +562,55 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
               <div className="w-full h-80 text-xs font-mono">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: 'السبت', 'طلب جديد': 2, 'معتمد': 1 },
-                    { name: 'الأحد', 'طلب جديد': 4, 'معتمد': 3 },
-                    { name: 'الإثنين', 'طلب جديد': 3, 'معتمد': 2 },
-                    { name: 'الثلاثاء', 'طلب جديد': 5, 'معتمد': 4 },
-                    { name: 'الأربعاء', 'طلب جديد': 7, 'معتمد': 6 },
-                    { name: 'الخميس', 'طلب جديد': 4, 'معتمد': 3 },
-                    { name: 'الجمعة', 'طلب جديد': 1, 'معتمد': 1 },
+                    { name: 'السبت', 'طلب جديد': tests.filter(t => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 6;
+                    }).length, 'معتمد': tests.filter(t => t.status === 'completed' && (() => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 6;
+                    })()).length },
+                    { name: 'الأحد', 'طلب جديد': tests.filter(t => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 0;
+                    }).length, 'معتمد': tests.filter(t => t.status === 'completed' && (() => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 0;
+                    })()).length },
+                    { name: 'الإثنين', 'طلب جديد': tests.filter(t => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 1;
+                    }).length, 'معتمد': tests.filter(t => t.status === 'completed' && (() => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 1;
+                    })()).length },
+                    { name: 'الثلاثاء', 'طلب جديد': tests.filter(t => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 2;
+                    }).length, 'معتمد': tests.filter(t => t.status === 'completed' && (() => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 2;
+                    })()).length },
+                    { name: 'الأربعاء', 'طلب جديد': tests.filter(t => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 3;
+                    }).length, 'معتمد': tests.filter(t => t.status === 'completed' && (() => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 3;
+                    })()).length },
+                    { name: 'الخميس', 'طلب جديد': tests.filter(t => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 4;
+                    }).length, 'معتمد': tests.filter(t => t.status === 'completed' && (() => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 4;
+                    })()).length },
+                    { name: 'الجمعة', 'طلب جديد': tests.filter(t => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 5;
+                    }).length, 'معتمد': tests.filter(t => t.status === 'completed' && (() => {
+                      const d = t.createdAt instanceof Date ? t.createdAt : new Date((t.createdAt as any)?.toDate?.() || t.createdAt);
+                      return d.getDay() === 5;
+                    })()).length },
                   ]} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="name" stroke="#94a3b8" />
@@ -586,10 +628,10 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
                 <h3 className="font-extrabold text-slate-800 text-sm border-b border-slate-100 pb-2">أبرز مؤشرات الجودة الطبيّة</h3>
                 <div className="flex flex-col gap-3 text-xs leading-relaxed">
                   <div className="bg-rose-50 border border-rose-150 p-3 rounded-xl text-rose-800">
-                    ⚠️ <strong>العينات المرفوضة (0 عينات):</strong> لم يتم إرجاع أو تلفظ أي عينات مخبرية لهذا اليوم بفضل مراقبة الفصائل والباركود في محطة السحب الآلي.
+                    ⚠️ <strong>العينات المرفوضة:</strong> {qcLogs.filter(q => q.status === 'failed').length} عينة - يتم تتبع حالة الجودة تلقائياً.
                   </div>
                   <div className="bg-indigo-50 border border-indigo-150 p-3 rounded-xl text-indigo-800">
-                    💡 <strong>أجهزة معطلة أو تنبيهات:</strong> كافة حساسات الكيمياء ونطاق الغدد والCobas تعمل بكفاءة تداول عالية %100.
+                    💡 <strong>أجهزة معطلة أو تنبيهات:</strong> {qcLogs.length > 0 ? `${qcLogs.length} سجل معايرة مسجل.` : 'لا توجد تنبيهات حالية - النظام يعمل بكفاءة.'}
                   </div>
                 </div>
               </div>
