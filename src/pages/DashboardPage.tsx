@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth as firebaseAuth } from '../lib/firebase';
 import { getUserProfile, createUserProfile, updateUserRole, getStaffInvite, deleteStaffInvite, getOwnerEmail } from '../lib/db';
-import { logoutUser, getEmulatedUser, setEmulatedUser } from '../lib/auth';
+import { logoutUser } from '../lib/auth';
 import { DriveUpload } from '../components/drive/DriveUpload';
 import { User, UserRole } from '../types';
 import { PatientWorkspace } from '../components/patients/PatientWorkspace';
@@ -50,8 +50,8 @@ export function DashboardPage() {
     setNotifications(list);
   };
 
-  const clearAllNotifs = async () => {
-    await clearNotifications();
+  const clearAllNotifs = () => {
+    clearNotifications();
     setNotifications([]);
   };
 
@@ -59,49 +59,34 @@ export function DashboardPage() {
     try {
       setLoading(true);
       setError(null);
-      const currentUser = firebaseAuth.currentUser || getEmulatedUser();
+      const currentUser = firebaseAuth.currentUser;
       if (!currentUser) {
         navigate('/login');
         return;
       }
       
-      let dynamicOwner = 'mhm763517@gmail.com';
-      try {
-        dynamicOwner = await getOwnerEmail();
-        setOwnerEmail(dynamicOwner);
-      } catch (e) {
-        console.warn('Could not get dynamic owner email:', e);
-      }
+      const dynamicOwner = await getOwnerEmail();
+      setOwnerEmail(dynamicOwner);
       
-      const isOwnerEmail = currentUser.email?.toLowerCase() === dynamicOwner || currentUser.email?.toLowerCase() === 'mhm763517@gmail.com' || currentUser.email?.toLowerCase() === 'gokerebrahimopq@gmail.com';
+      let data = await getUserProfile(currentUser.uid);
+      const isOwnerEmail = currentUser.email?.toLowerCase() === dynamicOwner || currentUser.email?.toLowerCase() === 'mhm763517@gmail.com';
       
-      let data: User | null = null;
-      try {
-        data = await getUserProfile(currentUser.uid);
-      } catch (dbErr) {
-        console.warn('Error reading user profile from database, creating active temporary fallback session:', dbErr);
-      }
-
       if (!data) {
         // Find if they have been pre-invited with a specific role by the Owner
         let assignedRole: UserRole = 'patient'; // Dynamic default is patient for security
-        let assignedName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Registered User';
-        let assignedNameAr = currentUser.displayName || currentUser.email?.split('@')[0] || 'مستخدم مسجل';
+        let assignedName = currentUser.displayName || currentUser.email || 'Registered User';
+        let assignedNameAr = currentUser.displayName || currentUser.email || 'مستخدم مسجل';
 
         if (isOwnerEmail) {
           assignedRole = 'admin';
         } else if (currentUser.email) {
-          try {
-            const invite = await getStaffInvite(currentUser.email);
-            if (invite) {
-              assignedRole = invite.role;
-              assignedName = invite.name || assignedName;
-              assignedNameAr = invite.nameAr || assignedNameAr;
-              // Consume the invite
-              await deleteStaffInvite(currentUser.email);
-            }
-          } catch (e) {
-            console.warn('Could not read/consume staff invite:', e);
+          const invite = await getStaffInvite(currentUser.email);
+          if (invite) {
+            assignedRole = invite.role;
+            assignedName = invite.name || assignedName;
+            assignedNameAr = invite.nameAr || assignedNameAr;
+            // Consume the invite
+            await deleteStaffInvite(currentUser.email);
           }
         }
 
@@ -114,20 +99,12 @@ export function DashboardPage() {
           nameAr: assignedNameAr,
           email: currentUser.email || undefined,
         };
-        try {
-          await createUserProfile(currentUser.uid, newProfile);
-        } catch (e) {
-          console.warn('Could not save profile to firestore, running in-memory:', e);
-        }
+        await createUserProfile(currentUser.uid, newProfile);
         data = newProfile;
       } else if (isOwnerEmail && data.role !== 'admin') {
         // Automatically elevate profile role to admin if it's the owner email
         data.role = 'admin';
-        try {
-          await updateUserRole(currentUser.uid, 'admin');
-        } catch (e) {
-          console.warn('Could not update user role to admin in database:', e);
-        }
+        await updateUserRole(currentUser.uid, 'admin');
       }
 
       setProfile(data);
@@ -143,12 +120,7 @@ export function DashboardPage() {
   };
 
   const handleLogout = async () => {
-    try {
-      await logoutUser();
-    } catch (e) {
-      console.warn('Logout erred:', e);
-    }
-    setEmulatedUser(null);
+    await logoutUser();
     navigate('/login');
   };
 

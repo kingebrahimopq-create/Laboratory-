@@ -1,45 +1,87 @@
 {
   "entities": {
-    "vaccination": {
-      "title": "Vaccination",
-      "description": "Patient vaccination record",
+    "User": {
+      "title": "User",
+      "description": "Represents clinic and lab workers or patients with specific security roles",
       "type": "object",
       "properties": {
-        "patientName": { "type": "string" },
-        "patientId": { "type": "string" },
-        "vaccineType": { "type": "string" },
-        "vaccineDate": { "type": "string" },
-        "doseNumber": { "type": "number" },
-        "status": { "type": "string" },
-        "notes": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "id": { "type": "string", "description": "Unique user UID from Firebase Auth" },
+        "username": { "type": "string", "description": "Display handler or handle" },
+        "role": { "type": "string", "enum": ["admin", "receptionist", "technician", "patient"] },
+        "name": { "type": "string", "description": "Full name in English" },
+        "nameAr": { "type": "string", "description": "Full name in Arabic" }
       },
-      "required": ["patientName", "vaccineType", "vaccineDate"]
+      "required": ["id", "username", "role", "name", "nameAr"]
     },
-    "lab_result": {
-      "title": "LabResult",
-      "description": "Medical lab result record",
+    "Patient": {
+      "title": "Patient",
+      "description": "Represents electronic medical health files of registered clinic patients",
       "type": "object",
       "properties": {
-        "patientName": { "type": "string" },
-        "testType": { "type": "string" },
-        "testValue": { "type": "string" },
-        "status": { "type": "string" },
-        "testDate": { "type": "string" },
-        "notes": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "id": { "type": "string" },
+        "name": { "type": "string", "description": "Patient's full name in English" },
+        "nameAr": { "type": "string", "description": "Patient's full name in Arabic" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "dob": { "type": "string", "format": "date-time" },
+        "address": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["patientName", "testType", "testValue"]
+      "required": ["name", "nameAr", "phone", "gender", "dob"]
+    },
+    "Test": {
+      "title": "Test",
+      "description": "A diagnostic lab test request, its parameters, status, and certified results",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string", "description": "Foreign key to patient" },
+        "type": { "type": "string", "description": "Type of lab analyze, e.g., CBC, Lipid, Liver" },
+        "parameters": { "type": "object", "description": "JSON map of test specifications" },
+        "results": { "type": "object", "description": "JSON map of test result values and ranges" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+        "assignedTo": { "type": "string", "description": "Technician ID assigned to run the check" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientId", "type", "status"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Lab visit and test reservation requests made by patients",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientNameAr": { "type": "string" },
+        "phone": { "type": "string" },
+        "testType": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientId", "patientNameAr", "phone", "testType", "date", "time", "status"]
     }
   },
   "firestore": {
-    "/vaccinations/{id}": {
-      "schema": "vaccination",
-      "description": "Collection of vaccination records"
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Clinic user profiles mapping roles"
     },
-    "/lab_results/{id}": {
-      "schema": "lab_result",
-      "description": "Collection of laboratory test results"
+    "patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Structured repository of clinical patients"
+    },
+    "tests/{testId}": {
+      "schema": "Test",
+      "description": "Patient diagnostic lab tests and reports"
+    },
+    "appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Lab visit appointment reservations"
     }
   }
 }

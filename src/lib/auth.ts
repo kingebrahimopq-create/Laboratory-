@@ -35,29 +35,35 @@ export const loginWithGoogle = async () => {
   try {
     return await signInWithPopup(auth, googleProvider);
   } catch (error: any) {
-    console.warn('signInWithPopup failed, analyzing environment...', error);
-
-    // Never use signInWithRedirect — it redirects to firebaseapp.com and returns
-    // "The requested action is invalid" or "state lost" errors on mobile/in-app browsers.
-    // Instead, throw a clear error so the UI can show the alternative login bridge.
+    console.warn('signInWithPopup failed or not supported, checking environments for fallback viability...', error);
+    
+    // Check if redirect will fail due to storage partitioning (iframes, Safari/iOS with cross-site tracking, in-app webviews)
     const isIframe = window.self !== window.top;
     const isCapacitor = (window as any).Capacitor !== undefined || /capacitor/i.test(navigator.userAgent || '');
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent || '');
-
+    
     if (
-      isIframe ||
-      isCapacitor ||
-      isMobile ||
-      isSafari ||
-      error?.code === 'auth/popup-blocked' ||
-      error?.code === 'auth/operation-not-supported-in-this-environment' ||
-      error?.code === 'auth/popup-closed-by-user' ||
-      error?.code === 'auth/cancelled-popup-request'
+      isIframe || 
+      isCapacitor || 
+      (isMobile && (error?.code === 'auth/popup-blocked' || error?.code === 'auth/operation-not-supported-in-this-environment')) ||
+      (isSafari && error?.code === 'auth/popup-blocked')
     ) {
+      console.error('Environment does not support safe popup/redirect auth. Preventing fatal redirect to firebaseapp.com.', error);
       throw new Error('auth/partitioned-storage-or-iframe-unsupported');
     }
 
+    if (
+      error?.code === 'auth/operation-not-supported-in-this-environment' ||
+      error?.code === 'auth/popup-blocked' ||
+      error?.code === 'auth/popup-closed-by-user' ||
+      error?.code === 'auth/cancelled-popup-request' ||
+      /unsupported|blocked|popup/i.test(error?.message || '')
+    ) {
+      const { signInWithRedirect } = await import('firebase/auth');
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
     throw error;
   }
 };
@@ -72,32 +78,4 @@ export const getUserRole = async (uid: string): Promise<UserRole | null> => {
     return (userDoc.data() as User).role;
   }
   return null;
-};
-
-let globalEmulatedUser: any = null;
-
-export const getEmulatedUser = () => {
-  if (globalEmulatedUser) return globalEmulatedUser;
-  try {
-    const saved = sessionStorage.getItem('lis_emulated_user');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch (e) {
-    // blocked
-  }
-  return null;
-};
-
-export const setEmulatedUser = (user: any) => {
-  globalEmulatedUser = user;
-  try {
-    if (user) {
-      sessionStorage.setItem('lis_emulated_user', JSON.stringify(user));
-    } else {
-      sessionStorage.removeItem('lis_emulated_user');
-    }
-  } catch (e) {
-    // blocked
-  }
 };

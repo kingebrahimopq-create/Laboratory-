@@ -1,135 +1,89 @@
-name: Build & Release Applications
+name: Build Mobile and Desktop Applications
 
 on:
   push:
-    branches: [ "main", "master" ]
-    tags: [ 'v*' ]
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version number (e.g., 2.0.0)'
-        required: true
-        default: '2.0.0'
-
-permissions:
-  contents: write
 
 jobs:
-  build-web:
-    name: Build Web Application
+  build-android:
+    name: Build Android App (APK)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      - name: Setup Node.js
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: 'npm'
+
       - name: Install Dependencies
-        run: npm install --legacy-peer-deps
-      - name: Build Web Assets
+        run: npm install
+
+      - name: Build Web Application
         run: npm run build
-      - name: Upload Web Artifact
+
+      - name: Configure Capacitor Android Platform
+        run: |
+          npx cap add android || echo "Android platform already added"
+          npx cap sync android
+
+      - name: Clean and Regenerate Gradle Wrapper
+        run: |
+          cd android
+          gradle wrapper --gradle-version 8.13
+
+      - name: Build Android APK (Debug & Release)
+        run: |
+          cd android
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+          ./gradlew assembleDebug --init-script init.gradle --no-daemon --max-workers=1 --no-build-cache
+
+      - name: Archive Android Preview APK
         uses: actions/upload-artifact@v4
         with:
-          name: MyLab-Web-App
-          path: dist/
-          retention-days: 30
+          name: Clinical-Laboratory-Android-App
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
   build-windows:
-    name: Build Windows Desktop App
-    needs: build-web
+    name: Build Windows App (EXE)
     runs-on: windows-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      - name: Setup Node.js
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: 'npm'
+
       - name: Install Dependencies
-        run: npm install --legacy-peer-deps
-      - name: Build Web Assets
+        run: npm install
+
+      - name: Build Web Application
         run: npm run build
-      - name: Build Windows Installer
-        run: npx electron-builder --win --x64 --publish never
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          NODE_ENV: production
-      - name: Upload Windows Artifact
+
+      - name: Package Windows Application with Electron
+        run: npm run build:electron
+
+      - name: Archive Windows Desktop EXE Installer
         uses: actions/upload-artifact@v4
         with:
-          name: MyLab-Windows-App
+          name: Clinical-Laboratory-Windows-App
           path: dist-electron/*.exe
-          if-no-files-found: warn
-
-  build-android:
-    name: Build Android Mobile App
-    needs: build-web
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '21'
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Install Dependencies
-        run: npm install --legacy-peer-deps
-      - name: Build Web Assets
-        run: npm run build
-      - name: Capacitor Setup Android
-        run: |
-          if [ -f android/app/google-services.json ]; then
-            cp android/app/google-services.json /tmp/google-services.json
-          fi
-          rm -rf android
-          npx cap add android
-          if [ -f /tmp/google-services.json ]; then
-            cp /tmp/google-services.json android/app/google-services.json
-          fi
-          npx cap sync android
-          npx cap copy android
-      - name: Make gradlew Executable
-        working-directory: android
-        run: chmod +x gradlew
-      - name: Build Android APK Debug
-        working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
-      - name: Upload Android Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MyLab-Android-Debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: warn
-
-  create-release:
-    name: Create Release Summary
-    needs: [build-windows, build-android]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-          merge-multiple: true
-      - name: Update Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/*
-          body: |
-            # My Lab LIMS - Medical Laboratory Application
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if-no-files-found: error

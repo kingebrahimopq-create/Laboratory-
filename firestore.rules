@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // First, default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Auth helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnerEmail() {
+      return isSignedIn() && (
+        request.auth.token.email.toLowerCase() == 'mhm763517@gmail.com' ||
+        request.auth.token.email.toLowerCase() == 'gokerebrahimopq@gmail.com' ||
+        (exists(/databases/$(database)/documents/settings/ownership) && 
+         request.auth.token.email.toLowerCase() == get(/databases/$(database)/documents/settings/ownership).data.ownerEmail.toLowerCase())
+      );
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == role) ||
+        (role == 'admin' && isOwnerEmail())
+      );
+    }
+
+    function isStaff() {
+      return hasRole('admin') || hasRole('receptionist') || hasRole('technician') || hasRole('phlebotomist');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Payload helper
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Users Collection Rules ---
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      // Users can only view or list users if they are staff or if they are looking up their own profile
+      allow list: if isSignedIn() && (isStaff() || userId == request.auth.uid);
+      allow create: if isSignedIn() && userId == request.auth.uid && (isValidUser(incoming()) || isOwnerEmail());
+      allow update: if isSignedIn() && userId == request.auth.uid && (
+        (isValidUser(incoming()) && (
+          (!incoming().diff(existing()).affectedKeys().hasAny(['role'])) || hasRole('admin') || isOwnerEmail()
+        )) || isOwnerEmail()
+      );
+      allow delete: if hasRole('admin');
+    }
+
+    function isValidUser(user) {
+      return user.id == request.auth.uid
+        && user.username is string && user.username.size() >= 3 && user.username.size() <= 50
+        && user.role is string && (user.role == 'admin' || user.role == 'receptionist' || user.role == 'technician' || user.role == 'phlebotomist' || user.role == 'patient')
+        && user.name is string && user.name.size() >= 2 && user.name.size() <= 100
+        && user.nameAr is string && user.nameAr.size() >= 2 && user.nameAr.size() <= 100;
+    }
+
+    // --- Patients Collection Rules ---
+    match /patients/{patientId} {
+      // Staff can read/write patients, patients can see their own info
+      allow read: if isSignedIn() && (isStaff() || (hasRole('patient') && existing().phone == getUserData().phone));
+      allow create: if isSignedIn() && (hasRole('admin') || hasRole('receptionist')) && isValidPatient(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (hasRole('admin') || hasRole('receptionist')) && isValidPatient(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt;
+      allow delete: if hasRole('admin');
+    }
+
+    function isValidPatient(patient) {
+      return patient.name is string && patient.name.size() >= 2 && patient.name.size() <= 100
+        && patient.nameAr is string && patient.nameAr.size() >= 2 && patient.nameAr.size() <= 100
+        && patient.phone is string && patient.phone.size() >= 5 && patient.phone.size() <= 20
+        && patient.gender is string && (patient.gender == 'male' || patient.gender == 'female');
+    }
+
+    // --- Tests Collection Rules ---
+    match /tests/{testId} {
+      // Staff can read/write tests, patients can see their tests if they are linked by phone or ID
+      allow read: if isSignedIn() && (isStaff() || (hasRole('patient') && get(/databases/$(database)/documents/patients/$(existing().patientId)).data.phone == getUserData().phone));
+      allow create: if isSignedIn() && (hasRole('admin') || hasRole('receptionist')) && isValidTest(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        // Receptionist can update test type or parameters
+        ((hasRole('admin') || hasRole('receptionist')) && isValidTest(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt) ||
+        // Technician can record results
+        (hasRole('technician') && isValidTest(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt && incoming().diff(existing()).affectedKeys().hasOnly(['results', 'status', 'updatedAt']))
+      );
+      allow delete: if hasRole('admin');
+    }
+
+    function isValidTest(test) {
+      return test.patientId is string
+        && test.type is string && test.type.size() >= 1 && test.type.size() <= 100
+        && test.status is string && (test.status == 'pending' || test.status == 'completed' || test.status == 'cancelled');
+    }
+
+    // --- Staff Invites Collection Rules ---
+    match /staff_invites/{inviteEmail} {
+      allow read: if isSignedIn();
+      allow write: if hasRole('admin');
+    }
+
+    // --- Appointments Collection Rules ---
+    match /appointments/{appointmentId} {
+      allow read: if isSignedIn() && (isStaff() || (hasRole('patient') && existing().phone == getUserData().phone));
+      allow create: if isSignedIn() && (isStaff() || (incoming().phone == getUserData().phone)) && isValidAppointment(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        // Staff can update anything including status
+        (isStaff() && isValidAppointment(incoming())) ||
+        // Patient can only cancel their own appointment
+        (hasRole('patient') && existing().phone == getUserData().phone && isValidAppointment(incoming()) && incoming().status == 'cancelled' && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+      allow delete: if hasRole('admin');
+    }
+
+    function isValidAppointment(apt) {
+      return apt.patientId is string
+        && apt.patientNameAr is string && apt.patientNameAr.size() >= 2 && apt.patientNameAr.size() <= 100
+        && apt.phone is string && apt.phone.size() >= 5 && apt.phone.size() <= 20
+        && apt.testType is string && apt.testType.size() >= 1 && apt.testType.size() <= 150
+        && apt.date is string && apt.date.size() >= 5 && apt.date.size() <= 20
+        && apt.time is string && apt.time.size() >= 3 && apt.time.size() <= 10
+        && apt.status is string && (apt.status == 'pending' || apt.status == 'approved' || apt.status == 'cancelled');
+    }
+
+    // --- Daily Expenses Rules ---
+    match /expenses/{expenseId} {
+      allow read, write: if isSignedIn() && (hasRole('admin') || hasRole('receptionist'));
+    }
+
+    // --- Shift Handover/Closing Rules ---
+    match /shifts/{shiftId} {
+      allow read, write: if isSignedIn() && (hasRole('admin') || hasRole('receptionist'));
+    }
+
+    // --- Quality Control (QC) Rules ---
+    match /qc/{qcId} {
+      allow read, write: if isSignedIn() && isStaff();
+    }
+
+    // --- Audit Logs Rules ---
+    match /audit_logs/{logId} {
+      allow read, write: if isSignedIn() && isStaff();
+    }
+
+    // --- Tests Catalog Rules ---
+    match /tests_catalog/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && hasRole('admin');
+    }
+
+    // --- Settings Collection Rules ---
+    match /settings/{settingsId} {
+      allow read: if isSignedIn();
+      allow write: if isOwnerEmail();
+    }
+  }
+}

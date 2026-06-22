@@ -1,5 +1,5 @@
 import { db, auth } from './firebase';
-import { collection, addDoc, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, Timestamp, query, orderBy, limit } from 'firebase/firestore';
 
 export interface LISNotification {
   id?: string;
@@ -101,13 +101,9 @@ export async function pushNotification(notification: Omit<LISNotification, 'time
   }
 
   // Save to localStorage so we have redundancy
-  try {
-    const local = getLocalNotifications();
-    local.unshift(newNotif);
-    localStorage.setItem('lis_notifications_store', JSON.stringify(local.slice(0, 50)));
-  } catch (e) {
-    console.warn('localStorage is not accessible:', e);
-  }
+  const local = getLocalNotifications();
+  local.unshift(newNotif);
+  localStorage.setItem('lis_notifications_store', JSON.stringify(local.slice(0, 50)));
 
   // Play ambient alert audio
   playNotificationTone(newNotif.type);
@@ -117,30 +113,20 @@ export async function pushNotification(notification: Omit<LISNotification, 'time
 }
 
 function getLocalNotifications(): LISNotification[] {
+  const raw = localStorage.getItem('lis_notifications_store');
+  if (!raw) {
+    const initial: LISNotification[] = [];
+    localStorage.setItem('lis_notifications_store', JSON.stringify(initial));
+    return initial;
+  }
   try {
-    const raw = localStorage.getItem('lis_notifications_store');
-    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
     return [];
   }
 }
 
-export async function clearNotifications(): Promise<void> {
-  // Clear localStorage immediately
-  try {
-    localStorage.removeItem('lis_notifications_store');
-  } catch (e) {
-    console.warn('localStorage not accessible:', e);
-  }
-
-  // Also delete all notifications from Firestore so they don't reappear on next load
-  try {
-    const snapshot = await getDocs(collection(db, 'notifications'));
-    await Promise.all(snapshot.docs.map(d => deleteDoc(doc(db, 'notifications', d.id))));
-  } catch (e) {
-    console.warn('Could not clear Firestore notifications:', e);
-  }
-
+export function clearNotifications() {
+  localStorage.removeItem('lis_notifications_store');
   window.dispatchEvent(new CustomEvent('lis_notification_received'));
 }

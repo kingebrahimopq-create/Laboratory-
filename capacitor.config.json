@@ -1,6 +1,6 @@
 {
   "appId": "com.kingebrahimopq.laboratory",
-  "appName": "ClinicalLaboratory",
+  "appName": "Clinical Laboratory Management System",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
