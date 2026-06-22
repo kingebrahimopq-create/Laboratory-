@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "vaccination": {
+      "title": "Vaccination",
+      "description": "Patient vaccination record",
+      "type": "object",
+      "properties": {
+        "patientName": { "type": "string" },
+        "patientId": { "type": "string" },
+        "vaccineType": { "type": "string" },
+        "vaccineDate": { "type": "string" },
+        "doseNumber": { "type": "number" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["patientName", "vaccineType", "vaccineDate"]
+    },
+    "lab_result": {
+      "title": "LabResult",
+      "description": "Medical lab result record",
+      "type": "object",
+      "properties": {
+        "patientName": { "type": "string" },
+        "testType": { "type": "string" },
+        "testValue": { "type": "string" },
+        "status": { "type": "string" },
+        "testDate": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["patientName", "testType", "testValue"]
+    }
+  },
+  "firestore": {
+    "/vaccinations/{id}": {
+      "schema": "vaccination",
+      "description": "Collection of vaccination records"
+    },
+    "/lab_results/{id}": {
+      "schema": "lab_result",
+      "description": "Collection of laboratory test results"
+    }
+  }
+}

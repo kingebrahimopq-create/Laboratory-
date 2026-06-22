@@ -1,0 +1,23 @@
+
+node_modules
+dist
+.env
+.env.local
+.git.corrupt
+git-ops.cjs
+git-push-main.cjs
+check-git.js
+check-git.cjs
+fix-git-index.cjs
+
+# Android build artifacts and IDE folders
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+android/.idea
+android/app/src/main/assets/public
+
+# OS files
+.DS_Store
+Thumbs.db

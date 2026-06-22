@@ -1,0 +1,17 @@
+# Code Owners for My Lab LIMS
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default code owners
+* @kingebrahimopq-create
+
+# Documentation
+/docs/* @kingebrahimopq-create
+/README.md @kingebrahimopq-create
+CHANGELOG.md @kingebrahimopq-create
+
+# Configuration
+/.github/* @kingebrahimopq-create
+package.json @kingebrahimopq-create
+
+# Source code
+/src/* @kingebrahimopq-create
