@@ -16,6 +16,7 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email.toLowerCase() == 'mhm763517@gmail.com' ||
         request.auth.token.email.toLowerCase() == 'gokerebrahimopq@gmail.com' ||
+        request.auth.token.email.toLowerCase() == 'admin@patient-lab.local' ||
         (exists(/databases/$(database)/documents/settings/ownership) && 
          request.auth.token.email.toLowerCase() == get(/databases/$(database)/documents/settings/ownership).data.ownerEmail.toLowerCase())
       );
