@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
@@ -52,17 +52,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Web & Server Assets
+      - name: Build Web Assets
         run: npm run build
 
       - name: Build Windows Installer
-        run: npx electron-builder --win --x64 --config electron-builder.json
+        run: npx electron-builder --win --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
@@ -94,7 +94,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Setup Java JDK
@@ -118,11 +118,19 @@ jobs:
           npx cap sync android
           npx cap copy android
 
+      - name: Regenerate Gradle Wrapper
+        working-directory: android
+        run: |
+          GRADLE_VERSION=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
+          curl -fsSL -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+          unzip -q /tmp/gradle.zip -d /tmp/gradle-dist
+          /tmp/gradle-dist/gradle-${GRADLE_VERSION}/bin/gradle wrapper --gradle-version ${GRADLE_VERSION}
+
       - name: Build Android APK (Debug)
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Build Android APK (Release Unsigned)
+      - name: Build Android APK (Release)
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon || true
 
@@ -134,8 +142,8 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Android Release APK
-        uses: actions/upload-artifact@v4
         if: hashFiles('android/app/build/outputs/apk/release/app-release-unsigned.apk') != ''
+        uses: actions/upload-artifact@v4
         with:
           name: MyLab-Android-Release
           path: android/app/build/outputs/apk/release/app-release-unsigned.apk
@@ -145,8 +153,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/debug/app-debug.apk
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -163,33 +170,12 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: List Artifacts
-        run: ls -la artifacts/
-
       - name: Update Release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
           body: |
             # My Lab LIMS - Medical Laboratory Application
-
-            ## Downloads
-            - Android APK (Debug): For testing on Android devices
-            - Windows Installer: Desktop application for Windows 10/11
-            - Web Application: Static files for web deployment
-
-            ## Features
-            - Patient management & registration
-            - Lab test ordering & results
-            - Appointment scheduling
-            - QR code verification
-            - Printable reports
-            - AI medical assistant
-            - Multi-language support (Arabic/English)
-
-            ## Installation
-            - **Windows**: Run the `.exe` installer
-            - **Android**: Enable "Install from unknown sources" and install the `.apk`
-            - **Web**: Upload `dist/` folder to any static hosting
+            Multi-platform build including Windows installer and Android APK.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
