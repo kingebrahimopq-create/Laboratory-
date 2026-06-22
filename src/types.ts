@@ -48,3 +48,40 @@ export interface StaffInvite {
   nameAr?: string;
   createdAt: Date;
 }
+
+export interface LabResult {
+  id: string;
+  patientName: string;
+  testType: string;
+  value: string;
+  unit?: string;
+  referenceRange?: string;
+  status: 'normal' | 'abnormal' | 'critical';
+  notes?: string;
+  performedAt: string;
+  createdAt: string;
+  driveFileId?: string;
+}
+
+export interface Vaccination {
+  id: string;
+  patientName: string;
+  vaccineName: string;
+  dose?: string;
+  lotNumber?: string;
+  site?: string;
+  administeredAt: string;
+  nextDoseDate?: string;
+  notes?: string;
+  createdAt: string;
+  driveFileId?: string;
+}
+
+export interface GithubStatus {
+  branch: string;
+  lastCommit: string;
+  commitMessage: string;
+  commitDate: string;
+  deployStatus: 'success' | 'failure' | 'pending' | 'unknown';
+  appVersion: string;
+}
