@@ -28,7 +28,10 @@ jobs:
         run: npm run build
 
       - name: Compile Windows Installer
-        run: npx electron-builder --win --x64
+        run: npx electron-builder --win --x64 --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload Windows Executable
         uses: actions/upload-artifact@v4
