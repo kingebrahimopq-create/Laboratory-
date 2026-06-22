@@ -1,0 +1,18 @@
+# Treat jar files as binary to avoid line-ending translation (LF / CRLF) which corrupts them
+*.jar binary
+
+# Treat other typical graphics/binary files as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.zip binary
+*.tar.gz binary
+*.exe binary
+*.dmg binary
+*.pkg binary

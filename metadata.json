@@ -1,0 +1,6 @@
+{
+  "name": "Clinical Laboratory Management System",
+  "description": "A comprehensive, high-fidelity Clinical Laboratory and Diagnostics Management System featuring secure patient records, role-based workflows for receptionists and technicians, interactive test tracking, and statistical analytics dashboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

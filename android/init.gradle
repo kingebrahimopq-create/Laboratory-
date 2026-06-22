@@ -1,0 +1,18 @@
+gradle.beforeProject { project ->
+    project.buildscript {
+        configurations.all {
+            resolutionStrategy {
+                force 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+                force 'org.bouncycastle:bcprov-jdk15to18:1.78.1'
+                force 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+            }
+        }
+    }
+    project.configurations.all {
+        resolutionStrategy {
+            force 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+            force 'org.bouncycastle:bcprov-jdk15to18:1.78.1'
+            force 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+        }
+    }
+}
