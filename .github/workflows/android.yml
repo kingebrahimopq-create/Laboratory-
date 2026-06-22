@@ -18,7 +18,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
@@ -32,7 +32,9 @@ jobs:
         with:
           java-version: '21'
           distribution: 'zulu'
-          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Add Android Platform (if missing)
         run: |
@@ -43,7 +45,7 @@ jobs:
       - name: Capacitor Sync
         run: npx cap sync android
 
-      - name: Regenerate Gradle Wrapper (fix LFS pointer issue)
+      - name: Regenerate Gradle Wrapper
         working-directory: android
         run: |
           GRADLE_VERSION=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
@@ -62,18 +64,19 @@ jobs:
         with:
           name: Laboratory-App-Debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
 
       - name: Create or Update GitHub Release with APK
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v2.0.0"
           name: "My Lab LIMS v2.0.0 - نظام إدارة المختبرات"
           body: |
             ## التحديثات في هذا الإصدار
-
-            - إصلاح Google Sign-in (localhost مضاف لـ Firebase Authorized Domains)
-            - إصلاح تسجيل الدخول بالبريد وكلمة المرور
-            - دعم Firebase Storage للنسخ الاحتياطي
+            - إصلاح Google Sign-in وتسجيل الدخول
+            - إضافة Firebase Authentication كاملة
+            - دعم google-services.json للأجهزة Android
 
             ### تثبيت Android
             فعّل "تثبيت من مصادر غير معروفة" ثم ثبّت app-debug.apk
