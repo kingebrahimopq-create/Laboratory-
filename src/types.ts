@@ -17,30 +17,6 @@ export interface User {
   email?: string;
 }
 
-export interface Patient {
-  id: string;
-  name: string;
-  nameAr: string;
-  email?: string;
-  phone: string;
-  gender: string;
-  dob: Date;
-  address?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Test {
-  id: string;
-  patientId: string;
-  type: string;
-  parameters: Record<string, unknown>;
-  results?: Record<string, unknown>;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface StaffInvite {
   email: string;
   role: UserRole;
@@ -53,27 +29,25 @@ export interface LabResult {
   id: string;
   patientName: string;
   testType: string;
-  value: string;
-  unit?: string;
-  referenceRange?: string;
-  status: 'normal' | 'abnormal' | 'critical';
+  testDate: string;
+  testValue: string;
+  status: 'Released' | 'Pending' | 'normal' | 'abnormal' | 'critical';
   notes?: string;
-  performedAt: string;
-  createdAt: string;
+  createdAt?: string;
   driveFileId?: string;
 }
 
 export interface Vaccination {
   id: string;
   patientName: string;
-  vaccineName: string;
-  dose?: string;
-  lotNumber?: string;
-  site?: string;
-  administeredAt: string;
-  nextDoseDate?: string;
+  patientId: string;
+  vaccineType: string;
+  vaccineDate: string;
+  doseNumber: number | string;
+  status: 'Completed' | 'Scheduled' | 'Pending';
+  vaccineName?: string;
   notes?: string;
-  createdAt: string;
+  createdAt?: string;
   driveFileId?: string;
 }
 
@@ -84,4 +58,17 @@ export interface GithubStatus {
   commitDate: string;
   deployStatus: 'success' | 'failure' | 'pending' | 'unknown';
   appVersion: string;
+}
+
+export interface Patient {
+  id: string;
+  name: string;
+  nameAr: string;
+  email?: string;
+  phone: string;
+  gender: string;
+  dob: Date;
+  address?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
