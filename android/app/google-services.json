@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "12279673341",
+    "firebase_url": "https://gen-lang-client-0393240619-default-rtdb.firebaseio.com",
+    "project_id": "gen-lang-client-0393240619",
+    "storage_bucket": "gen-lang-client-0393240619.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:12279673341:android:f22f771a0dd43e49e8e994",
+        "android_client_info": {
+          "package_name": "com.kingebrahimopq.laboratory"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "12279673341-qevn7tdgfvtr8tmr9c3kl3qdj10obk00.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcplAWSsH7Lj3NDSNXw_ozGHrYkuDej5A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "12279673341-qevn7tdgfvtr8tmr9c3kl3qdj10obk00.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
