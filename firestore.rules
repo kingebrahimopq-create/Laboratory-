@@ -168,5 +168,37 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isOwnerEmail();
     }
+
+    // --- Home Visits Rules ---
+    match /home_visits/{visitId} {
+      allow read: if isSignedIn() && (isStaff() || (hasRole('patient') && existing().phone == getUserData().phone));
+      allow create: if isSignedIn() && (isStaff() || (incoming().phone == getUserData().phone));
+      allow update: if isSignedIn() && (
+        isStaff() || 
+        (hasRole('patient') && existing().phone == getUserData().phone && incoming().status == 'cancelled' && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+      allow delete: if hasRole('admin');
+    }
+
+    // --- LIS Notifications Rules ---
+    match /notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if hasRole('admin');
+    }
+
+    // --- Inventory Rules ---
+    match /inventory/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isStaff();
+    }
+
+    // --- Inventory Logs Rules ---
+    match /inventory_logs/{logId} {
+      allow read: if isSignedIn() && isStaff();
+      allow create: if isSignedIn();
+      allow update, delete: if hasRole('admin');
+    }
   }
 }
