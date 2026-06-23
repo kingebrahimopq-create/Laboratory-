@@ -18,10 +18,10 @@ import {
   UserCheck
 } from 'lucide-react';
 
-// Owner credentials - embedded for direct authentication
-const OWNER_EMAIL = 'mhm763517@gmail.com';
-const OWNER_PASSWORD = '0e02ddd1';
-const OWNER_USERNAME = 'mhm_owner';
+  // Owner credentials - embedded for direct authentication
+  const OWNER_EMAIL = 'mhm763517@gmail.com';
+  const OWNER_PASSWORD = '0e02ddd1';
+  const OWNER_USERNAME = 'mhm763517';
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -395,9 +395,7 @@ export function LoginForm() {
                 className="w-full p-3 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white text-left focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-mono"
                 dir="ltr"
               />
-              <p className="text-[9px] text-slate-400 mt-1">
-                معرف المالك: <span className="font-mono">mhm763517@gmail.com</span> أو <span className="font-mono">mhm763517</span>
-              </p>
+
             </div>
           )}
 
