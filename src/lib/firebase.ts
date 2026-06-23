@@ -1,66 +1,39 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { initializeFirestore } from 'firebase/firestore';
-import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check';
-import { getStorage } from 'firebase/storage';
-import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
-import { getPerformance } from 'firebase/performance';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { createClient } from '@supabase/supabase-js';
 
-// Detect whether we are running in a sandboxed/preview/localhost web environment
-const isSandbox = typeof window !== 'undefined' && (
-  window.location.hostname.includes('run.app') || 
-  window.location.hostname.includes('localhost') || 
-  window.location.hostname.includes('127.0.0.1')
-);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tgbwmcgnyqejjyrxurab.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_gI2ElexDJe3MO89iof8nUQ_xono7L9R';
 
-// Configure the global App Check debug token in dev mode or sandboxed frame to verify seamlessly
-if (typeof window !== 'undefined') {
-  (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-}
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
-const app = initializeApp(firebaseConfig);
-export { app };
-
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-}, (firebaseConfig as any).firestoreDatabaseId);
-
-export const auth = getAuth(app);
-export const storage = getStorage(app);
-
-// Lazy initialize Analytics and Performance safely for non-blocking operations in non-browser environments
-let analytics: any = null;
-let performance: any = null;
-
-if (typeof window !== 'undefined') {
-  isAnalyticsSupported().then((supported) => {
-    if (supported) {
-      if (isSandbox) {
-        console.log('Sandbox/Preview environment detected. Firebase Analytics is safely bypassed.');
-        return;
-      }
-      try {
-        analytics = getAnalytics(app);
-        console.log('Firebase Analytics initialized successfully.');
-      } catch (err) {
-        console.warn('Firebase Analytics initialization failed:', err);
-      }
-    }
-  }).catch(err => console.warn('Analytics support check failed:', err));
-
-  try {
-    performance = getPerformance(app);
-    console.log('Firebase Performance Monitoring initialized successfully.');
-  } catch (err) {
-    console.warn('Performance Monitoring is not supported in this environment:', err);
-  }
-}
-
-export { analytics, performance };
-
-// App check initialization bypassed to ensure seamless cross-device testing
+// Firebase App mock
+export const app = { name: '[DEFAULT]' };
+export const db = supabase;
+export const storage = supabase.storage;
 export const appCheck = null;
+export const analytics = null;
+export const performance = null;
 
-
-
+export const auth = {
+  currentUser: null as any,
+  onAuthStateChanged: (cb: any) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        auth.currentUser = { uid: session.user.id, email: session.user.email };
+        cb({ uid: session.user.id, email: session.user.email });
+      } else {
+        auth.currentUser = null;
+        cb(null);
+      }
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        auth.currentUser = { uid: session.user.id, email: session.user.email };
+        cb({ uid: session.user.id, email: session.user.email });
+      } else {
+        auth.currentUser = null;
+        cb(null);
+      }
+    });
+    return () => {};
+  }
+};

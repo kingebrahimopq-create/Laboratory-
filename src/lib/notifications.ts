@@ -1,5 +1,5 @@
 import { db, auth } from './firebase';
-import { collection, addDoc, getDocs, doc, Timestamp, query, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, Timestamp, query, orderBy, limit } from './supabase-firestore';
 
 export interface LISNotification {
   id?: string;

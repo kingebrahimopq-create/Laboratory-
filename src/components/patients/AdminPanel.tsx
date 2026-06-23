@@ -28,7 +28,7 @@ import {
   updateOwnerEmail
 } from '../../lib/db';
 import { auth } from '../../lib/firebase';
-import { getDoc, setDoc } from 'firebase/firestore';
+import { getDoc, setDoc } from '../../lib/supabase-firestore';
 import { Patient, Test, User, UserRole } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 

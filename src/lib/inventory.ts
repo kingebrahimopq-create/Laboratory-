@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, setDoc, updateDoc, Timestamp } from './supabase-firestore';
 import { pushNotification } from './notifications';
 
 export interface InventoryItem {

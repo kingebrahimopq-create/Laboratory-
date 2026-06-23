@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAccessToken, initAuth, googleSignIn } from '../../lib/driveAuth';
 import { storage } from '../../lib/firebase';
-import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from '../../lib/supabase-storage';
 import { 
   Cloud, CheckCircle, AlertCircle, RefreshCw, Download, Trash2, 
   ShieldCheck, FolderSync, Info, HardDrive, Database, Eye, ExternalLink, HelpCircle 

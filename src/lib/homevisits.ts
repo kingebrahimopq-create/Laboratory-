@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, Timestamp, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, Timestamp, query, where } from './supabase-firestore';
 import { pushNotification } from './notifications';
 import { autoDeductConsumables } from './inventory';
 

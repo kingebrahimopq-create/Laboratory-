@@ -1,4 +1,4 @@
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, signInWithRedirect, getRedirectResult } from './supabase-auth';
 import { app, auth as existingAuth } from './firebase';
 
 const auth = existingAuth;

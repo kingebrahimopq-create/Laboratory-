@@ -4,8 +4,8 @@ import { loginUser, registerUser, loginAnonymously, logoutUser } from '../../lib
 import { getUserProfile, createUserProfile, db } from '../../lib/db';
 import { UserRole } from '../../types';
 import { auth } from '../../lib/firebase';
-import { query, collection, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { query, collection, where, getDocs, doc, getDoc } from '../../lib/supabase-firestore';
+import { RecaptchaVerifier, signInWithPhoneNumber } from '../../lib/supabase-auth';
 import { 
   Shield, 
   Sparkles, 
@@ -202,7 +202,7 @@ export function LoginForm() {
           // If the proxy admin account doesn't exist yet, register it dynamically on the fly!
           if (loginErr.code === 'auth/user-not-found' || loginErr.code === 'auth/invalid-credential' || loginErr.code === 'auth/wrong-password') {
             try {
-              const { createUserWithEmailAndPassword } = await import('firebase/auth');
+              const { createUserWithEmailAndPassword } = await import('../../lib/supabase-auth');
               cred = await createUserWithEmailAndPassword(auth, proxyEmail, pass);
             } catch (regErr: any) {
               console.error('Failed to register dynamic administrator fallback:', regErr);
@@ -217,7 +217,7 @@ export function LoginForm() {
           // Create or update their Firestore profile under this UID so that their display email is 'mhm763517@gmail.com'
           // and they have full admin role
           try {
-            const { doc, setDoc } = await import('firebase/firestore');
+            const { doc, setDoc } = await import('../../lib/supabase-firestore');
             await setDoc(doc(db, 'users', cred.user.uid), {
               id: cred.user.uid,
               email: 'mhm763517@gmail.com',

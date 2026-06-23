@@ -1,6 +1,6 @@
 import { auth, db } from './firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, signInWithPopup, GoogleAuthProvider, signInAnonymously } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, signInWithPopup, GoogleAuthProvider, signInAnonymously } from './supabase-auth';
+import { doc, getDoc, setDoc } from './supabase-firestore';
 import { User, UserRole } from '../types';
 
 const googleProvider = new GoogleAuthProvider();
@@ -60,7 +60,7 @@ export const loginWithGoogle = async () => {
       error?.code === 'auth/cancelled-popup-request' ||
       /unsupported|blocked|popup/i.test(error?.message || '')
     ) {
-      const { signInWithRedirect } = await import('firebase/auth');
+      const { signInWithRedirect } = await import('./supabase-auth');
       await signInWithRedirect(auth, googleProvider);
       return null;
     }

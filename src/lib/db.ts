@@ -1,5 +1,5 @@
 import { db, auth } from './firebase';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, setDoc, query, where, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, setDoc, query, where, Timestamp, deleteDoc } from './supabase-firestore';
 export { db, auth, doc, updateDoc, collection, addDoc, getDocs, getDoc, setDoc, query, where, Timestamp, deleteDoc };
 import { Patient, Test, User, UserRole } from '../types';
 
