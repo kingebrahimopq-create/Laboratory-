@@ -88,7 +88,7 @@ export function LoginForm() {
         }
       } catch (err: any) {
         console.error('Error fetching patient:', err);
-        setError('حدث خطأ في جلب بيانات المريض.');
+        setError('حدث خطأ في جلب بيانات المريض: ' + (err.message || String(err)));
       } finally {
         setLoading(false);
       }
@@ -307,8 +307,22 @@ export function LoginForm() {
       <div className="p-6 md:p-8 flex flex-col gap-4">
         
         {error && (
-          <div className="p-3 bg-rose-50/80 border border-rose-100 text-rose-600 text-xs rounded-xl text-right leading-relaxed animate-fade-in relative z-10">
-            {error}
+          <div className="p-3 bg-rose-50/80 border border-rose-100 text-rose-600 text-xs rounded-xl text-right leading-relaxed animate-fade-in relative z-10 flex flex-col gap-2">
+            <span>{error}</span>
+            {activeTab === 'patient' && isRegisteredPhone === null && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setIsRegisteredPhone(false);
+                  setInfoMessage('تم تفعيل وضع التسجيل اليدوي لعدم إمكانية التحقق التلقائي.');
+                  setPatientUsername('pat_' + Math.random().toString(36).substring(2, 6));
+                }}
+                className="text-right text-[11px] font-bold text-slate-800 underline hover:text-slate-900 cursor-pointer block mt-1"
+              >
+                انقر هنا لإكمال البيانات وتسجيل ملف طبي جديد يدويًا
+              </button>
+            )}
           </div>
         )}
 
@@ -437,6 +451,21 @@ export function LoginForm() {
               <div className="text-center text-xs text-slate-400 mt-2 bg-slate-50 rounded-lg p-3">
                 أدخل رقم جوالك كاملًا للتحقق من سجلك.
               </div>
+            )}
+
+            {isRegisteredPhone === null && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setIsRegisteredPhone(false);
+                  setInfoMessage('الرجاء إدخال البيانات لتسجيل ملف طبي جديد.');
+                  setPatientUsername('pat_' + Math.random().toString(36).substring(2, 6));
+                }}
+                className="text-center text-[11px] font-bold text-slate-500 hover:text-indigo-600 hover:underline cursor-pointer py-2 block transition-all mt-1"
+              >
+                هل أنت مريض جديد؟ انقر هنا لفتح ملف طبي مباشرة
+              </button>
             )}
 
           </form>
