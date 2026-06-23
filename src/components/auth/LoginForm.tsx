@@ -194,7 +194,7 @@ export function LoginForm() {
           // Fallback check matching Supabase invalid credentials Error
           if (errMessage.includes('invalid login') || errMessage.includes('not found') || errMessage.includes('password') || loginErr.status === 400 || errMessage.includes('invalid-credential') || errMessage.includes('user-not-found') || errMessage.includes('wrong-password')) {
             try {
-              const { createUserWithEmailAndPassword } = await import('firebase/auth');
+              const { createUserWithEmailAndPassword } = await import('../../lib/supabase-auth');
               cred = await createUserWithEmailAndPassword(auth, proxyEmail, staffPassword);
             } catch (regErr: any) {
               console.error('Failed to register dynamic administrator fallback:', regErr);
