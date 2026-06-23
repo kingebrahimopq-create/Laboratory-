@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { auth } from '../../lib/firebase';
-import { onAuthStateChanged, User } from '../../lib/supabase-auth';
+import { onAuthStateChanged } from '../../lib/supabase-auth';
+// Mock User type since it's not exported natively
+export interface User { uid: string; email: string | null; }
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

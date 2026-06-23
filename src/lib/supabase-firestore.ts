@@ -59,7 +59,7 @@ export function limit(n: number) {
 
 export async function getDocs(queryRef: any) {
   if (!queryRef.table) queryRef = { table: queryRef.table || queryRef.path || queryRef };
-  let req = supabase.from(queryRef.table || queryRef).select();
+  let req: any = supabase.from(queryRef.table || queryRef).select();
   
   if (queryRef.clauses) {
     for (let c of queryRef.clauses) {

@@ -13,16 +13,8 @@ export function InAppUpdate() {
   const [updating, setUpdating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Check on startup if we have a persisted live URL redirect
   useEffect(() => {
-    const savedLiveUrl = localStorage.getItem('capacitor_live_url');
-    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    
-    // If we have a saved live URL and we are currently on localhost, redirect immediately on load!
-    if (savedLiveUrl && isLocalHost) {
-      console.log('Redirecting to saved live URL:', savedLiveUrl);
-      window.location.href = savedLiveUrl;
-    }
+    // Disabled redirect to live URL on localhost because it breaks Capacitor WebView on Android
   }, []);
 
   // Check for updates
@@ -84,20 +76,14 @@ export function InAppUpdate() {
         
         // Stagger load for nice user experience
         setTimeout(() => {
-          // Force reload/redirect to the live server URL, or reload of current page if already running there
-          if (window.location.href.startsWith(LIVE_SERVER_URL)) {
-            // Unregister service workers if any, clear caches, and reload
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.getRegistrations().then((registrations) => {
-                for (const registration of registrations) {
-                  registration.unregister();
-                }
-              });
-            }
-            window.location.reload();
-          } else {
-            window.location.href = LIVE_SERVER_URL;
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+              for (const registration of registrations) {
+                registration.unregister();
+              }
+            });
           }
+          window.location.reload();
         }, 1500);
       } catch (err) {
         console.error('Update apply error:', err);

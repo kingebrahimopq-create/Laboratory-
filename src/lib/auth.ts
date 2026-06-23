@@ -61,7 +61,7 @@ export const loginWithGoogle = async () => {
       /unsupported|blocked|popup/i.test(error?.message || '')
     ) {
       const { signInWithRedirect } = await import('./supabase-auth');
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithRedirect();
       return null;
     }
     throw error;

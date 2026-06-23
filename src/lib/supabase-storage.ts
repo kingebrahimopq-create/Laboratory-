@@ -21,7 +21,8 @@ export async function listAll(storageRef: any) {
   return {
     items: data.map(item => ({
       name: item.name,
-      path: (storageRef.path ? storageRef.path + '/' : '') + item.name
+      path: (storageRef.path ? storageRef.path + '/' : '') + item.name,
+      fullPath: (storageRef.path ? storageRef.path + '/' : '') + item.name
     }))
   };
 }
