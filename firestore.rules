@@ -52,9 +52,8 @@ service cloud.firestore {
 
     // --- Users Collection Rules ---
     match /users/{userId} {
-      allow get: if isSignedIn();
-      // Users can only view or list users if they are staff or if they are looking up their own profile
-      allow list: if isSignedIn() && (isStaff() || userId == request.auth.uid);
+      allow get: if true;
+      allow list: if true;
       allow create: if isSignedIn() && userId == request.auth.uid && (isValidUser(incoming()) || isOwnerEmail());
       allow update: if isSignedIn() && userId == request.auth.uid && (
         (isValidUser(incoming()) && (

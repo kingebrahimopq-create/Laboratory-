@@ -217,9 +217,8 @@ export function LoginForm() {
           // Create or update their Firestore profile under this UID so that their display email is 'mhm763517@gmail.com'
           // and they have full admin role
           try {
-            const { doc, setDoc, getFirestore } = await import('firebase/firestore');
-            const dbInstance = getFirestore();
-            await setDoc(doc(dbInstance, 'users', cred.user.uid), {
+            const { doc, setDoc } = await import('firebase/firestore');
+            await setDoc(doc(db, 'users', cred.user.uid), {
               id: cred.user.uid,
               email: 'mhm763517@gmail.com',
               username: 'mhm_owner',
@@ -230,7 +229,7 @@ export function LoginForm() {
             }, { merge: true });
 
             // Also configure settings/ownership to target this account's proxy email
-            await setDoc(doc(dbInstance, 'settings', 'ownership'), {
+            await setDoc(doc(db, 'settings', 'ownership'), {
               ownerEmail: proxyEmail
             }, { merge: true });
           } catch (dbErr) {

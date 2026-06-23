@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
@@ -22,11 +22,7 @@ if (typeof window !== 'undefined') {
 const app = initializeApp(firebaseConfig);
 export { app };
 
-// Initialize Firestore with long-polling forced. This is highly recommended to bypass connection 
-// timeout/WebSocket blocks in docker containers and reverse proxies (e.g., Cloud Run sandboxes).
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-}, (firebaseConfig as any).firestoreDatabaseId);
+export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
