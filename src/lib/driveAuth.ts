@@ -31,7 +31,7 @@ export const initAuth = (
   onAuthFailure?: () => void
 ) => {
   // Check for redirect result on initialization
-  getRedirectResult().then((result: any) => {
+  getRedirectResult(auth).then((result: any) => {
     if (result) {
       const accessToken = result.session?.provider_token || null;
       if (accessToken) {
@@ -69,7 +69,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
       result = await signInWithPopup(auth, provider);
     } catch (popupErr: any) {
       console.warn('signInWithPopup failed for Drive, checking environment parameters...', popupErr);
-      await signInWithRedirect();
+      await signInWithRedirect(auth, provider);
       return null;
     }
 
