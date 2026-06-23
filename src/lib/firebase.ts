@@ -61,54 +61,8 @@ if (typeof window !== 'undefined') {
 
 export { analytics, performance };
 
-// Initialize Firebase App Check with Custom Android Play Integrity provider
-// and ReCaptchaV3 as standard web fallback.
-let appCheck: any = null;
-try {
-  if (typeof window !== 'undefined') {
-    const isAndroid = /android/i.test(navigator.userAgent) || (window as any).Capacitor;
-    
-    // In sandboxed web preview, we bypass App Check entirely since ReCaptcha domain verification
-    // will block Firestore connections. Play Integrity is still allowed on native Android wrapper.
-    if (isSandbox && !isAndroid) {
-      console.log('Sandbox web preview detected. Firebase App Check is safely bypassed to avoid connection timeouts.');
-    } else {
-      const provider = isAndroid
-        ? new CustomProvider({
-            getToken: async () => {
-              // Retrieve Play Integrity token when running native on Android via bridge
-              if ((window as any).Capacitor && (window as any).Capacitor.Plugins && (window as any).Capacitor.Plugins.FirebaseAppCheck) {
-                try {
-                  const res = await (window as any).Capacitor.Plugins.FirebaseAppCheck.getAppCheckToken();
-                  return {
-                    token: res.token,
-                    expireTimeMillis: res.expireTimeMillis || (Date.now() + 3600 * 1000)
-                  };
-                } catch (err) {
-                  console.warn('Failed to retrieve Play Integrity token via native plugin:', err);
-                }
-              }
-              // Fallback for sandboxed web testing or simulators
-              return {
-                token: 'play-integrity-fallback-debug-token',
-                expireTimeMillis: Date.now() + 3600 * 1000
-              };
-            }
-          })
-        : new ReCaptchaV3Provider('6Ld_V3QqAAAAAHTZp-2f47_b5V-QYlW2U-B6yX-1'); // Default fallback site key
-
-      appCheck = initializeAppCheck(app, {
-        provider,
-        isTokenAutoRefreshEnabled: true
-      });
-      console.log('Firebase App Check successfully initialized with Google Play Integrity/ReCaptcha verification.');
-    }
-  }
-} catch (error) {
-  console.warn('Firebase App Check Initialization Status:', error);
-}
-
-export { appCheck };
+// App check initialization bypassed to ensure seamless cross-device testing
+export const appCheck = null;
 
 
 

@@ -76,8 +76,8 @@ service cloud.firestore {
     match /patients/{patientId} {
       // Staff can read/write patients, patients can see their own info
       allow read: if isSignedIn() && (isStaff() || (hasRole('patient') && existing().phone == getUserData().phone));
-      allow create: if isSignedIn() && (isStaff() || isOwnerEmail());
-      allow update: if isSignedIn() && (isStaff() || isOwnerEmail());
+      allow create: if isSignedIn() && (hasRole('admin') || hasRole('receptionist')) && isValidPatient(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (hasRole('admin') || hasRole('receptionist')) && isValidPatient(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt;
       allow delete: if hasRole('admin');
     }
 
@@ -92,8 +92,13 @@ service cloud.firestore {
     match /tests/{testId} {
       // Staff can read/write tests, patients can see their tests if they are linked by phone or ID
       allow read: if isSignedIn() && (isStaff() || (hasRole('patient') && get(/databases/$(database)/documents/patients/$(existing().patientId)).data.phone == getUserData().phone));
-      allow create: if isSignedIn() && (isStaff() || isOwnerEmail());
-      allow update: if isSignedIn() && (isStaff() || isOwnerEmail());
+      allow create: if isSignedIn() && (hasRole('admin') || hasRole('receptionist')) && isValidTest(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        // Receptionist can update test type or parameters
+        ((hasRole('admin') || hasRole('receptionist')) && isValidTest(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt) ||
+        // Technician can record results
+        (hasRole('technician') && isValidTest(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt && incoming().diff(existing()).affectedKeys().hasOnly(['results', 'status', 'updatedAt']))
+      );
       allow delete: if hasRole('admin');
     }
 

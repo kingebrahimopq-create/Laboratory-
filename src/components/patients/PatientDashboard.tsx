@@ -39,27 +39,19 @@ import {
   Stethoscope
 } from 'lucide-react';
 
-interface LabContactInfo {
-  phone: string;
-  whatsapp: string;
-  receptionDesk: string;
-  address: string;
-  workHours: string;
-}
+const OFFERS_AND_DISCOUNTS = [
+  { title: "خصم الفحص الشامل للأسرة والشركاء", rate: "خصم 15%", code: "FAM15", descAr: "يطبق على الفحوصات الشاملة وصورة الدم الكاملة ووظائف الكبد عند حضور فردين أو أكثر." },
+  { title: "باقة كبار السن والمتقاعدين", rate: "خصم 20%", code: "SENIOR20", descAr: "تقديرًا لآبائنا وأمهاتنا، نوفر خصماً فورياً على كافة تحاليل الهرمونات والسكري والدهنيات الثلاثية." },
+  { title: "المسح الكيميائي الدوري للطلاب والرياضيين", rate: "خصم 10%", code: "STUDENT10", descAr: "يشمل تحاليل فقر الدم، فيتامين د، الكالسيوم، ومؤشرات البنية الرياضية." },
+  { title: "العرض الفضي لمتابعي الموقع الإلكتروني", rate: "فحص مجاني للسكر الصائم", code: "WEBGLU", descAr: "احصل على تحليل مجاني لمستوى الجلوكوز بالدم عند حجز فحص كيميائي متكامل عبر البوابة." }
+];
 
-interface LabOffer {
-  title: string;
-  rate: string;
-  code: string;
-  descAr: string;
-}
-
-const DEFAULT_CONTACTS: LabContactInfo = {
-  phone: "",
-  whatsapp: "",
-  receptionDesk: "",
-  address: "",
-  workHours: ""
+const LABORATORY_CONTACTS = {
+  phone: "920012345",
+  whatsapp: "0554321098",
+  receptionDesk: "0554321099",
+  address: "شارع التخصصي، حي السليمانية، الرياض 12223، المملكة العربية السعودية",
+  workHours: "السبت - الخميس: 7:00 ص - 11:00 م | الجمعة: 1:00 م - 9:00 م"
 };
 
 export function PatientDashboard() {
@@ -68,13 +60,13 @@ export function PatientDashboard() {
   const [patientTests, setPatientTests] = useState<Test[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
+  
   // Home Visits state
   const [myHomeVisits, setMyHomeVisits] = useState<any[]>([]);
-
+  
   // Custom Tabs state
   const [activeTab, setActiveTab] = useState<'results' | 'appointments'>('results');
-
+  
   // Appointments states
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [bookingTest, setBookingTest] = useState<string>('');
@@ -93,39 +85,10 @@ export function PatientDashboard() {
   const [guestDate, setGuestDate] = useState('');
   const [guestTime, setGuestTime] = useState('09:00');
 
-  // Lab info state (loaded from Firestore)
-  const [labContacts, setLabContacts] = useState<LabContactInfo>(DEFAULT_CONTACTS);
-  const [offers, setOffers] = useState<LabOffer[]>([]);
-
   useEffect(() => {
     loadPatientFiles();
     fetchCustomCatalog();
-    loadLabInfo();
   }, []);
-
-  const loadLabInfo = async () => {
-    try {
-      const { getDoc, doc } = await import('firebase/firestore');
-      const { db } = await import('../../lib/firebase');
-
-      // Load contacts
-      const contactsSnap = await getDoc(doc(db, 'settings', 'contacts'));
-      if (contactsSnap.exists()) {
-        setLabContacts(contactsSnap.data() as LabContactInfo);
-      }
-
-      // Load offers
-      const offersSnap = await getDoc(doc(db, 'settings', 'offers'));
-      if (offersSnap.exists()) {
-        const data = offersSnap.data();
-        if (data.items && Array.isArray(data.items)) {
-          setOffers(data.items);
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to load lab info from Firestore:', err);
-    }
-  };
 
   const fetchCustomCatalog = async () => {
     try {
@@ -575,7 +538,7 @@ export function PatientDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-mono text-xs font-extrabold text-indigo-600 block">{labContacts.phone || '---'}</span>
+                  <span className="font-mono text-xs font-extrabold text-indigo-600 block">{LABORATORY_CONTACTS.phone}</span>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 block">الرقم الموحد المعتمد</span>
                     <strong className="text-slate-800 text-xs font-bold">الاتصال الهاتفي 📞</strong>
@@ -583,7 +546,7 @@ export function PatientDashboard() {
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-mono text-xs font-extrabold text-teal-600 block">{labContacts.whatsapp || '---'}</span>
+                  <span className="font-mono text-xs font-extrabold text-teal-600 block">{LABORATORY_CONTACTS.whatsapp}</span>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 block">محادثة واتساب الفورية</span>
                     <strong className="text-slate-8 /0 text-xs font-bold">خدمات الواتساب 💬</strong>
@@ -591,7 +554,7 @@ export function PatientDashboard() {
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-mono text-xs font-extrabold text-slate-600 block">{labContacts.receptionDesk || '---'}</span>
+                  <span className="font-mono text-xs font-extrabold text-slate-600 block">{LABORATORY_CONTACTS.receptionDesk}</span>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 block">مكتب استقبال التحاليل</span>
                     <strong className="text-slate-800 text-xs font-bold">حجز الزيارات المنزلية 🏡</strong>
@@ -609,9 +572,9 @@ export function PatientDashboard() {
 
               <div className="p-4 bg-indigo-50 border border-indigo-100/40 rounded-xl">
                 <span className="text-[10px] text-indigo-700 block mb-1 font-bold">عنوان وموقع المختبر الرئيسي:</span>
-                <p className="text-xs text-slate-700 leading-relaxed font-semibold">{labContacts.address || '---'}</p>
+                <p className="text-xs text-slate-700 leading-relaxed font-semibold">{LABORATORY_CONTACTS.address}</p>
                 <div className="text-[10.5px] text-slate-450 mt-1 flex justify-end gap-1.5 font-medium">
-                  <span>{labContacts.workHours || '---'}</span>
+                  <span>{LABORATORY_CONTACTS.workHours}</span>
                   <strong>أوقات العمل:</strong>
                 </div>
               </div>

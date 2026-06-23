@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Sparkles, RefreshCw, X, CheckCircle } from 'lucide-react';
 import versionData from '../../public/version.json';
 
-const CURRENT_APP_VERSION = versionData.version;
+const CURRENT_APP_VERSION = versionData.version; // Local packaged assets version
+const LIVE_SERVER_URL = "https://ais-dev-z7rplyyo3zns5mj2pca2sa-921433797673.europe-west2.run.app";
 
 export function InAppUpdate() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -16,8 +17,8 @@ export function InAppUpdate() {
   useEffect(() => {
     const savedLiveUrl = localStorage.getItem('capacitor_live_url');
     const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-    // If we have a saved live URL and we are currently on localhost, redirect immediately on load
+    
+    // If we have a saved live URL and we are currently on localhost, redirect immediately on load!
     if (savedLiveUrl && isLocalHost) {
       console.log('Redirecting to saved live URL:', savedLiveUrl);
       window.location.href = savedLiveUrl;
@@ -26,16 +27,7 @@ export function InAppUpdate() {
 
   // Check for updates
   const checkForUpdate = async () => {
-    // Get the live server URL from environment variable or localStorage
-    const appUrl = import.meta.env.VITE_APP_URL || '';
-
-    // Skip if no app URL is configured or if running on the live server itself
-    if (!appUrl) {
-      console.log('No VITE_APP_URL configured. Skipping remote update check.');
-      return;
-    }
-
-    const isLiveServer = window.location.origin === appUrl || window.location.hostname.includes('run.app');
+    const isLiveServer = window.location.origin.includes("run.app") || window.location.origin === LIVE_SERVER_URL;
     if (isLiveServer) {
       console.log('App is running directly on the live server. Skipping local cache update check.');
       return;
@@ -43,16 +35,16 @@ export function InAppUpdate() {
 
     try {
       setChecking(true);
-      // Fetch version.json from the configured server URL to bypass local caching
-      const response = await fetch(`${appUrl}/version.json?t=${Date.now()}`);
+      // Fetch version.json from the live server to bypass local caching
+      const response = await fetch(`${LIVE_SERVER_URL}/version.json?t=${Date.now()}`);
       if (!response.ok) throw new Error('Failed to fetch remote version');
-
+      
       const data = await response.json();
       console.log('Local version:', CURRENT_APP_VERSION, 'Remote version:', data.version);
-
+      
       // Check if remote version is different
       const savedVersion = localStorage.getItem('current_applied_version') || CURRENT_APP_VERSION;
-
+      
       if (data.version !== CURRENT_APP_VERSION || data.version !== savedVersion) {
         setRemoteVersion(data.version);
         setRemoteDesc(data.description || 'تحديث عام للأداء والميزات الجديدة.');
@@ -70,7 +62,7 @@ export function InAppUpdate() {
   useEffect(() => {
     // Run update check on mount
     checkForUpdate();
-
+    
     // Periodically check every 5 minutes
     const interval = setInterval(checkForUpdate, 5 * 60 * 1000);
     return () => clearInterval(interval);
@@ -80,27 +72,20 @@ export function InAppUpdate() {
     setUpdating(true);
     setToastMessage('جاري تنزيل وتثبيت حزمة التحديث الذكية...');
 
-    const appUrl = import.meta.env.VITE_APP_URL || '';
-    if (!appUrl) {
-      setToastMessage('لم يتم تكوين عنوان الخادم. يرجى التحقق من إعدادات التطبيق.');
-      setUpdating(false);
-      return;
-    }
-
     setTimeout(() => {
       try {
         // Save remote version as the active applied version
         localStorage.setItem('current_applied_version', remoteVersion);
-
-        // Save the live URL so next app launches load directly from server
-        localStorage.setItem('capacitor_live_url', appUrl);
-
+        
+        // Save the live URL so next app launches load directly from Cloud Run
+        localStorage.setItem('capacitor_live_url', LIVE_SERVER_URL);
+        
         setToastMessage('اكتمل التحديث بنجاح! جاري تشغيل النسخة الجديدة...');
-
+        
         // Stagger load for nice user experience
         setTimeout(() => {
-          // Force reload/redirect to the server URL, or reload of current page if already running there
-          if (window.location.href.startsWith(appUrl)) {
+          // Force reload/redirect to the live server URL, or reload of current page if already running there
+          if (window.location.href.startsWith(LIVE_SERVER_URL)) {
             // Unregister service workers if any, clear caches, and reload
             if ('serviceWorker' in navigator) {
               navigator.serviceWorker.getRegistrations().then((registrations) => {
@@ -111,7 +96,7 @@ export function InAppUpdate() {
             }
             window.location.reload();
           } else {
-            window.location.href = appUrl;
+            window.location.href = LIVE_SERVER_URL;
           }
         }, 1500);
       } catch (err) {
@@ -143,7 +128,7 @@ export function InAppUpdate() {
                 <p className="text-xs text-gray-400 font-mono">الإصدار: v{remoteVersion}</p>
               </div>
             </div>
-            <button
+            <button 
               onClick={() => setUpdateAvailable(false)}
               className="rounded-lg p-1 text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors"
               disabled={updating}
@@ -167,7 +152,7 @@ export function InAppUpdate() {
               <RefreshCw className={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} />
               <span>اضغط للتحديث الفوري</span>
             </button>
-
+            
             <button
               onClick={() => setUpdateAvailable(false)}
               disabled={updating}
@@ -192,7 +177,7 @@ export function InAppUpdate() {
   );
 }
 
-// Helper to clear update cache
+// Add a super slick helper button somewhere in settings if needed, or trigger reset via logo
 export const clearLiveUpdateCache = () => {
   localStorage.removeItem('capacitor_live_url');
   localStorage.removeItem('current_applied_version');

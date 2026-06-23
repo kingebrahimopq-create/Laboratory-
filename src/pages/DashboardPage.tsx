@@ -69,9 +69,7 @@ export function DashboardPage() {
       setOwnerEmail(dynamicOwner);
       
       let data = await getUserProfile(currentUser.uid);
-      const isOwnerEmail = currentUser.email?.toLowerCase() === dynamicOwner || 
-                           currentUser.email?.toLowerCase() === 'mhm763517@gmail.com' ||
-                           currentUser.email?.toLowerCase() === 'gokerebrahimopq@gmail.com';
+      const isOwnerEmail = currentUser.email?.toLowerCase() === dynamicOwner || currentUser.email?.toLowerCase() === 'mhm763517@gmail.com';
       
       if (!data) {
         // Find if they have been pre-invited with a specific role by the Owner
