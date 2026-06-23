@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
@@ -22,7 +22,9 @@ if (typeof window !== 'undefined') {
 const app = initializeApp(firebaseConfig);
 export { app };
 
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, (firebaseConfig as any).firestoreDatabaseId);
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
