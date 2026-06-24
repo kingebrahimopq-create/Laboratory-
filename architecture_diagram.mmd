@@ -1,0 +1,14 @@
+```mermaid
+graph TD
+    A[المستخدمون] --> B(تطبيق الويب/الموبايل)
+    B --> C(Supabase)
+    B --> D(خادم Node.js)
+    C --> E(قاعدة البيانات PostgreSQL)
+    C --> F(Supabase Storage)
+    C --> G(Supabase Auth)
+    D --> C
+    D --> H(محرك الأتمتة)
+    B --> I(نشر الويب)
+    B --> J(تطبيق سطح المكتب Electron)
+    B --> K(تطبيق الموبايل Capacitor)
+```
