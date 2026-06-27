@@ -1,0 +1,89 @@
+name: Build Mobile and Desktop Applications
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android App (APK)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Configure Capacitor Android Platform
+        run: |
+          npx cap add android || echo "Android platform already added"
+          npx cap sync android
+
+      - name: Clean and Regenerate Gradle Wrapper
+        run: |
+          cd android
+          gradle wrapper --gradle-version 8.13
+
+      - name: Build Android APK (Debug & Release)
+        run: |
+          cd android
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --max-workers=1 --no-build-cache
+
+      - name: Archive Android Preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Clinical-Laboratory-Android-App
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows App (EXE)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Package Windows Application with Electron
+        run: npm run build:electron
+
+      - name: Archive Windows Desktop EXE Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Clinical-Laboratory-Windows-App
+          path: dist-electron/*.exe
+          if-no-files-found: error

@@ -1,0 +1,6 @@
+{
+  "name": "Laboratory Dashboard",
+  "description": "A stylish, gradient-heavy dashboard for managing experiments or data, connected to the Supabase database.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
