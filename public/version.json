@@ -1,6 +1,6 @@
 {
-  "version": "1.0.19",
-  "buildTime": 1782297125000,
-  "description": "Trigger Vercel build and update Supabase configurations."
+  "version": "1.0.20",
+  "buildTime": 1782333600000,
+  "description": "تحديث نظام ذكي لحل مشكلات المزامنة وتنزيل أحدث نسخة تلقائياً مع تحسين الأداء."
 }
 
