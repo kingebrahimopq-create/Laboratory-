@@ -634,7 +634,7 @@ export function PatientWorkspace({ refreshTrigger, onRefresh }: { refreshTrigger
                             </div>
 
                             {/* Ticket Details summary */}
-                            <div className="bg-slate-50 rounded-lg p-2.5 mt-2 text-[10px] text-slate-505 grid grid-cols-2 gap-2 text-right">
+                            <div className="bg-slate-50 rounded-lg p-2.5 mt-2 text-[10px] text-slate-500 grid grid-cols-2 gap-2 text-right">
                               <div><strong>الجهة الضامنة:</strong> {test.insuranceProvider || 'دفع شخصي (كاش)'}</div>
                               {test.insuranceApprovalNumber && (
                                 <div><strong>كود الموافقة:</strong> <span className="font-mono">{test.insuranceApprovalNumber}</span></div>

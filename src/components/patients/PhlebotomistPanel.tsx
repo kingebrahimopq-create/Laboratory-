@@ -518,28 +518,7 @@ export function PhlebotomistPanel({ refreshTrigger, onRefresh }: { refreshTrigge
           </div>
         </div>
 
-        {/* LIMS Broker Interfacing stream logs (ASTM/HL7 Protocol viewer) */}
-        <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 shadow-inner border border-slate-950">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
-              <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-black">ASTM / HL7 LIMS BROKER LIVE</span>
-            </div>
-            <h4 className="font-bold text-xs text-slate-300">مراقب واجهة ربط أجهزة التحليل الطبية</h4>
-          </div>
 
-          <div className="max-h-[160px] overflow-y-auto flex flex-col gap-1.5 text-left font-mono text-[9px] text-slate-350 pr-1 select-all" dir="ltr">
-            {deviceLogs.map((log, i) => (
-              <div key={i} className={`p-1.5 rounded transition-all whitespace-pre-wrap ${
-                log.includes('Sysmex') ? 'bg-indigo-950 text-indigo-300' :
-                log.includes('critical') ? 'bg-rose-950 text-rose-300 border-l-2 border-rose-500' :
-                'bg-slate-850 hover:bg-slate-800'
-              }`}>
-                {log}
-              </div>
-            ))}
-          </div>
-        </div>
 
       </div>
 

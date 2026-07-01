@@ -134,16 +134,12 @@ export async function getInventory(): Promise<InventoryItem[]> {
   try {
     const qSnapshot = await getDocs(collection(db, 'inventory'));
     if (qSnapshot.empty) {
-      // Seed default stock
-      for (const item of DEFAULT_INVENTORY_ITEMS) {
-        await setDoc(doc(db, 'inventory', item.id), item);
-      }
-      return DEFAULT_INVENTORY_ITEMS;
+      return [];
     }
     return qSnapshot.docs.map(d => d.data() as InventoryItem);
   } catch (e) {
     console.warn('Inventory fetch failed, using fallback memory state', e);
-    return DEFAULT_INVENTORY_ITEMS;
+    return [];
   }
 }
 

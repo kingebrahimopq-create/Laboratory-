@@ -115,6 +115,24 @@ export const updateUserRole = async (uid: string, role: UserRole) => {
   }
 };
 
+export const updateUserProfile = async (uid: string, updates: Partial<User>) => {
+  const path = `${USERS_COLLECTION}/${uid}`;
+  try {
+    await updateDoc(doc(db, USERS_COLLECTION, uid), updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+};
+
+export const deleteUserProfile = async (uid: string) => {
+  const path = `${USERS_COLLECTION}/${uid}`;
+  try {
+    await deleteDoc(doc(db, USERS_COLLECTION, uid));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
 // --- Patient Operations ---
 export const addPatient = async (patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
@@ -347,7 +365,7 @@ export const LAB_TESTS_CATALOG: TestCatalogItem[] = [
     id: 'cbc',
     nameAr: 'صورة الدم الكاملة',
     nameEn: 'Complete Blood Count (CBC)',
-    price: 90,
+    price: 0,
     durationText: 'ساعتين',
     requiresFasting: false,
     descriptionAr: 'تحليل شامل لخلايا الدم الحمراء والبيضاء والصفائح الكشف عن فقر الدم أو الالتهابات والمناعة.',
@@ -357,7 +375,7 @@ export const LAB_TESTS_CATALOG: TestCatalogItem[] = [
     id: 'fbs',
     nameAr: 'تحليل السكر الصائم',
     nameEn: 'Fasting Blood Sugar (FBS)',
-    price: 45,
+    price: 0,
     durationText: 'صائم (٨ ساعات)',
     requiresFasting: true,
     descriptionAr: 'فحص لمستوى الجلوكوز بمصل الدم بعد صيام 8 ساعات لتشخيص مرض السكري ومعدل حرق الكربوهيدرات.',
@@ -367,7 +385,7 @@ export const LAB_TESTS_CATALOG: TestCatalogItem[] = [
     id: 'lipid',
     nameAr: 'فحص الدهون الكامل',
     nameEn: 'Lipid Profile',
-    price: 150,
+    price: 0,
     durationText: 'صائم (١٢ ساعة)',
     requiresFasting: true,
     descriptionAr: 'يشمل الكوليسترول الكلي، الدهون الثلاثية، الكوليسترول الضار والنافع لمراقبة صحة القلب والشرايين.',
@@ -377,7 +395,7 @@ export const LAB_TESTS_CATALOG: TestCatalogItem[] = [
     id: 'kidney',
     nameAr: 'وظائف الكلى الكاملة',
     nameEn: 'Kidney Function Test',
-    price: 130,
+    price: 0,
     durationText: 'ساعتين',
     requiresFasting: false,
     descriptionAr: 'يشمل قياس نسبة الكرياتينين واليوريا وحمض البوليك لتقييم كفاءة عمل الكلى.',
@@ -387,7 +405,7 @@ export const LAB_TESTS_CATALOG: TestCatalogItem[] = [
     id: 'liver',
     nameAr: 'إنزيمات ووظائف الكبد',
     nameEn: 'Liver Function Test (LFT)',
-    price: 160,
+    price: 0,
     durationText: '٣ ساعات',
     requiresFasting: false,
     descriptionAr: 'يقيس مستويات إنزيمات الكبد والبيليروبين والبروتينات لتقييم صحة خلايا الكبد والمرارة.',
@@ -397,7 +415,7 @@ export const LAB_TESTS_CATALOG: TestCatalogItem[] = [
     id: 'thyroid',
     nameAr: 'فحص هرمونات الغدة الدرقية',
     nameEn: 'Thyroid Profile (TSH, Free T3, Free T4)',
-    price: 190,
+    price: 0,
     durationText: 'يوم واحد',
     requiresFasting: false,
     descriptionAr: 'يقيم أداء الغدة الدرقية والكشف عن حالات قصور الغدة أو نشاطها المفرط.',
@@ -407,7 +425,7 @@ export const LAB_TESTS_CATALOG: TestCatalogItem[] = [
     id: 'vit_d',
     nameAr: 'تحليل فيتامين دال',
     nameEn: 'Vitamin D (25-OH)',
-    price: 180,
+    price: 0,
     durationText: 'يوم واحد',
     requiresFasting: false,
     descriptionAr: 'قياس نسبة الكالسيوم النشط وفيتامين دال لتقييم سلامة العظام والمفاصل والمناعة الذاتية.',
@@ -555,16 +573,12 @@ export const getCustomTestsCatalog = async (): Promise<TestCatalogItem[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, 'tests_catalog'));
     if (querySnapshot.empty) {
-      // Seed initial ones first
-      for (const item of LAB_TESTS_CATALOG) {
-        await setDoc(doc(db, 'tests_catalog', item.id), item);
-      }
-      return LAB_TESTS_CATALOG;
+      return [];
     }
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestCatalogItem));
   } catch (error) {
     console.warn('Failed to fetch from firestore, using static LAB_TESTS_CATALOG fallback', error);
-    return LAB_TESTS_CATALOG;
+    return [];
   }
 };
 
@@ -603,6 +617,54 @@ export const updateOwnerEmail = async (newEmail: string): Promise<void> => {
     await setDoc(docRef, { ownerEmail: newEmail.trim().toLowerCase() }, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, 'settings/ownership');
+  }
+};
+
+// --- Dynamic Laboratory Devices Management ---
+export interface LabDevice {
+  id: string;
+  name: string;
+  type: string;
+  protocol: string;
+  port: string;
+  status: 'online' | 'offline';
+}
+
+export const getDevices = async (): Promise<LabDevice[]> => {
+  try {
+    const qSnapshot = await getDocs(collection(db, 'devices'));
+    if (qSnapshot.empty) {
+      return [];
+    }
+    return qSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as LabDevice));
+  } catch (error) {
+    console.warn('Devices fetch failed, using fallback empty state', error);
+    return [];
+  }
+};
+
+export const addLabDevice = async (device: LabDevice) => {
+  try {
+    await setDoc(doc(db, 'devices', device.id), device);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `devices/${device.id}`);
+  }
+};
+
+export const deleteLabDevice = async (deviceId: string) => {
+  try {
+    await deleteDoc(doc(db, 'devices', deviceId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `devices/${deviceId}`);
+  }
+};
+
+// --- Dynamic Patient Profile Deletion ---
+export const deletePatient = async (patientId: string) => {
+  try {
+    await deleteDoc(doc(db, 'patients', patientId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `patients/${patientId}`);
   }
 };
 

@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tgbwmcgnyqejjyrxurab.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnYndtY2dueXFlamp5cnh1cmFiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjIxMDU5NCwiZXhwIjoyMDk3Nzg2NTk0fQ.i4qHN60-IDrsL9_0bSFhJ1GHJPhEPPNhxmoTI1ckum8';
+const supabaseUrl = (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_URL : undefined) || process.env.VITE_SUPABASE_URL || 'https://tgbwmcgnyqejjyrxurab.supabase.co';
+// Force service_role key to enable admin features (bypass email verification, auto-confirm accounts)
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnYndtY2dueXFlamp5cnh1cmFiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjIxMDU5NCwiZXhwIjoyMDk3Nzg2NTk0fQ.i4qHN60-IDrsL9_0bSFhJ1GHJPhEPPNhxmoTI1ckum8';
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables');

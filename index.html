@@ -4,6 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Google AI Studio App</title>
+    <script>
+      (function() {
+        try {
+          var liveUrl = localStorage.getItem('capacitor_live_url');
+          if (liveUrl) {
+            var isLocal = window.location.hostname === 'localhost' || 
+                          window.location.hostname === '127.0.0.1' || 
+                          window.location.protocol === 'capacitor:' || 
+                          window.location.protocol === 'file:';
+            
+            if (isLocal && window.location.href.indexOf(liveUrl) === -1) {
+              window.location.href = liveUrl;
+            }
+          }
+        } catch (e) {
+          console.error('Capacitor live update redirect failed:', e);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
