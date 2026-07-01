@@ -24,7 +24,7 @@ export function LoginForm() {
     showLabName: boolean;
     labName: string;
   }>({ showLabName: false, labName: "لم يحدد بعد" });
-  const [activeTab, setActiveTab] = useState<"patient" | "staff">("patient");
+  const activeTab = "patient";
   const [isRegistering, setIsRegistering] = useState(false);
 
   // Form State
@@ -127,54 +127,24 @@ export function LoginForm() {
 
   return (
     <div
-      className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden"
+      className="w-full max-w-md bg-white/75 backdrop-blur-xl rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.06)] border border-white/60 overflow-hidden font-sans"
       dir="rtl"
     >
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 text-white p-6 text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-md mx-auto mb-2 relative z-10">
-          <Activity className="h-5 w-5 animate-pulse" />
+      <div className="p-8 text-center border-b border-gray-100/40 relative">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-900 text-white shadow-md mx-auto mb-3">
+          <Activity className="h-6 w-6" />
         </div>
-        <h1 className="text-xl font-black mb-1 relative z-10 text-white">
+        <h1 className="text-xl font-bold mb-1.5 text-gray-900">
           {labProfile.showLabName
             ? labProfile.labName
-            : "بوابة الدخول الموحد للتحاليل"}
+            : "بوابة المريض الإلكترونية"}
         </h1>
-        <p className="text-[11px] text-slate-300 relative z-10">
-          تسجيل الدخول الآمن
-        </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200">
-        <button
-          onClick={() => {
-            setActiveTab("patient");
-            setIsRegistering(false);
-            setError(null);
-          }}
-          className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === "patient" ? "text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50/30" : "text-slate-500 hover:bg-slate-50"}`}
-        >
-          <Smartphone className="w-4 h-4" />
-          بوابة المرضى
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab("staff");
-            setIsRegistering(false);
-            setError(null);
-          }}
-          className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === "staff" ? "text-indigo-600 border-b-2 border-indigo-500 bg-indigo-50/30" : "text-slate-500 hover:bg-slate-50"}`}
-        >
-          <User className="w-4 h-4" />
-          بوابة الكادر الوظيفي
-        </button>
-      </div>
-
-      <div className="p-8 flex flex-col gap-6">
+      <div className="p-8 flex flex-col gap-5">
         {error && (
-          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium border border-red-100">
+          <div className="bg-red-500/10 text-red-700 text-xs p-3 rounded-xl text-center font-bold border border-red-500/20">
             {error}
           </div>
         )}
@@ -183,40 +153,43 @@ export function LoginForm() {
           onSubmit={isRegistering ? handleRegister : handleLogin}
           className="flex flex-col gap-4"
         >
-          {isRegistering && activeTab === "patient" && (
+          {isRegistering && (
             <>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold text-gray-500 mr-1 mb-1">
                   الاسم بالعربية
                 </label>
                 <input
                   type="text"
                   value={nameAr}
                   onChange={(e) => setNameAr(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-gray-50/50 border border-gray-200/80 rounded-xl p-3 text-sm text-gray-950 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:bg-white transition-all text-right"
+                  placeholder="مثال: محمد أحمد"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold text-gray-500 mr-1 mb-1">
                   الاسم بالإنجليزية (اختياري)
                 </label>
                 <input
                   type="text"
                   value={nameEn}
                   onChange={(e) => setNameEn(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-gray-50/50 border border-gray-200/80 rounded-xl p-3 text-sm text-gray-950 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:bg-white transition-all text-right"
+                  placeholder="Example: Mohamed Ahmed"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold text-gray-500 mr-1 mb-1">
                   رقم الهاتف
                 </label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-gray-50/50 border border-gray-200/80 rounded-xl p-3 text-sm text-gray-950 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:bg-white transition-all text-right"
+                  placeholder="مثال: 0500000000"
                   required
                 />
               </div>
@@ -224,27 +197,29 @@ export function LoginForm() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-[11px] font-bold text-gray-500 mr-1 mb-1">
               البريد الإلكتروني
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg p-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-gray-50/50 border border-gray-200/80 rounded-xl p-3 text-sm text-gray-950 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:bg-white transition-all text-right"
+              placeholder="name@example.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-[11px] font-bold text-gray-500 mr-1 mb-1">
               كلمة المرور
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg p-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-gray-50/50 border border-gray-200/80 rounded-xl p-3 text-sm text-gray-950 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:bg-white transition-all text-right"
+              placeholder="••••••••"
               required
             />
           </div>
@@ -252,38 +227,36 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-4 bg-slate-900 hover:bg-slate-950 text-white py-4 rounded-xl font-bold text-center shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50"
+            className="w-full mt-3 bg-gray-900 hover:bg-black text-white py-3 px-4 rounded-xl font-bold text-sm text-center shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? (
-              <RefreshCw className="w-5 h-5 animate-spin" />
+              <RefreshCw className="w-4 h-4 animate-spin" />
             ) : isRegistering ? (
-              <UserPlus className="w-5 h-5 text-emerald-400" />
+              <UserPlus className="w-4 h-4" />
             ) : (
-              <LogIn className="w-5 h-5 text-emerald-400" />
+              <LogIn className="w-4 h-4" />
             )}
             <span>
               {loading
                 ? "جاري التحميل..."
                 : isRegistering
-                  ? "إنشاء حساب"
+                  ? "إنشاء حساب صحي جديد"
                   : "تسجيل الدخول"}
             </span>
           </button>
         </form>
 
-        {activeTab === "patient" && (
-          <div className="text-center mt-2">
-            <button
-              type="button"
-              onClick={() => setIsRegistering(!isRegistering)}
-              className="text-emerald-600 hover:text-emerald-700 text-sm font-bold"
-            >
-              {isRegistering
-                ? "لديك حساب بالفعل؟ تسجيل الدخول"
-                : "ليس لديك حساب؟ إنشاء حساب جديد"}
-            </button>
-          </div>
-        )}
+        <div className="text-center mt-2">
+          <button
+            type="button"
+            onClick={() => setIsRegistering(!isRegistering)}
+            className="text-gray-600 hover:text-black text-xs font-semibold underline underline-offset-4"
+          >
+            {isRegistering
+              ? "لديك حساب بالفعل؟ تسجيل الدخول"
+              : "ليس لديك حساب؟ إنشاء حساب جديد"}
+          </button>
+        </div>
       </div>
     </div>
   );

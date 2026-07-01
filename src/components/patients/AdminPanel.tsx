@@ -25,11 +25,19 @@ import {
   db,
   updateDoc,
   getOwnerEmail,
-  updateOwnerEmail
+  updateOwnerEmail,
+  updateUserProfile,
+  deleteUserProfile,
+  deletePatient,
+  getDevices,
+  addLabDevice,
+  deleteLabDevice
 } from '../../lib/db';
 import { auth as supabaseAuth } from '../../lib/supabase';
 import { getDoc, setDoc } from '../../lib/supabase-firestore';
 import { Patient, Test, User, UserRole } from '../../types';
+import { getClinicSettings, saveClinicSettings, ClinicSettings } from '../../lib/settings';
+import { PatientDashboard } from './PatientDashboard';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   Users, 
@@ -54,7 +62,8 @@ import {
   List,
   Activity,
   Heart,
-  FileText
+  FileText,
+  Download
 } from 'lucide-react';
 
 const DEVICE_OPTIONS = [
@@ -65,19 +74,57 @@ const DEVICE_OPTIONS = [
   'مجهر فحص مخبري وخلوي Olympus',
 ];
 
-export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: boolean; onRefresh: () => void }) {
+export function AdminPanel({ 
+  refreshTrigger, 
+  onRefresh,
+  activeSubTab,
+  hideTabsHeader = false
+}: { 
+  refreshTrigger: boolean; 
+  onRefresh: () => void;
+  activeSubTab?: 'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation' | 'patients_control';
+  hideTabsHeader?: boolean;
+}) {
   // Tabs definition
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation' | 'patients_control'>('dashboard');
+
+  useEffect(() => {
+    if (activeSubTab) {
+      setActiveTab(activeSubTab);
+    }
+  }, [activeSubTab]);
+
+  // Patient Control & Impersonation States
+  const [impersonatedPatientPhone, setImpersonatedPatientPhone] = useState<string | null>(null);
+  const [showImpersonateModal, setShowImpersonateModal] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [editPatientNameAr, setEditPatientNameAr] = useState('');
+  const [editPatientPhone, setEditPatientPhone] = useState('');
+  const [editPatientDob, setEditPatientDob] = useState('');
+
+  // Staff Editing States
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editUserNameAr, setEditUserNameAr] = useState('');
+  const [editUserEmail, setEditUserEmail] = useState('');
+  const [editUserUsername, setEditUserUsername] = useState('');
+
+  // Dynamic LIS Devices States
+  const [devices, setDevices] = useState<any[]>([]);
+  const [newDevName, setNewDevName] = useState('');
+  const [newDevType, setNewDevType] = useState('');
+  const [newDevProtocol, setNewDevProtocol] = useState('ASTM');
+  const [newDevPort, setNewDevPort] = useState('COM1');
 
   // Laboratory settings states
   const [labName, setLabName] = useState('لم يحدد بعد');
   const [showLabName, setShowLabName] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(getClinicSettings());
 
   // LIS Automation State
   const [lisStatus, setLisStatus] = useState<'idle' | 'handshaking' | 'success'>('idle');
   const [lisLogs, setLisLogs] = useState<string[]>([]);
-  const [selectedAutoDevice, setSelectedAutoDevice] = useState('Sysmex XN-350');
+  const [selectedAutoDevice, setSelectedAutoDevice] = useState('');
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -100,6 +147,7 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
     try {
       const docRef = doc(db, 'settings', 'lab_profile');
       await setDoc(docRef, { labName, showLabName }, { merge: true });
+      saveClinicSettings(clinicSettings);
       alert('تم حفظ إعدادات همر وهوية المختبر بنجاح في السجلات السحابية!');
     } catch (e) {
       console.error(e);
@@ -155,6 +203,52 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
   const [newPrice, setNewPrice] = useState('');
   const [newDescAr, setNewDescAr] = useState('');
   const [submittingCatalog, setSubmittingCatalog] = useState(false);
+  
+  const [isAddingNewTest, setIsAddingNewTest] = useState(false);
+  const [addTestNameAr, setAddTestNameAr] = useState('');
+  const [addTestNameEn, setAddTestNameEn] = useState('');
+  const [addTestPrice, setAddTestPrice] = useState('');
+  const [addTestDesc, setAddTestDesc] = useState('');
+  const [addTestCategory, setAddTestCategory] = useState('الكيمياء السريرية');
+
+  const handleAddNewTest = async () => {
+    if (!addTestNameAr || !addTestNameEn || !addTestPrice) {
+      alert('الرجاء تعبئة الاسم بالعربية والانجليزية والسعر.');
+      return;
+    }
+    setSubmittingCatalog(true);
+    try {
+      const id = addTestNameEn.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString().slice(-4);
+      await addCustomTestCatalogItem({
+        id,
+        nameAr: addTestNameAr,
+        nameEn: addTestNameEn,
+        price: Number(addTestPrice),
+        descriptionAr: addTestDesc || 'فحص طبي شامل معتمد',
+        category: addTestCategory,
+        durationText: '24 ساعة',
+        requiresFasting: false
+      });
+      await addAuditLog({
+        userId: 'admin_panel',
+        username: 'admin',
+        action: 'إضافة تحليل جديد للكتالوج',
+        details: `إضافة الفحص: ${addTestNameAr}`
+      });
+      setIsAddingNewTest(false);
+      setAddTestNameAr('');
+      setAddTestNameEn('');
+      setAddTestPrice('');
+      setAddTestDesc('');
+      loadAllAdminData();
+      alert('تم إضافة التحليل الجديد بنجاح.');
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء الإضافة.');
+    } finally {
+      setSubmittingCatalog(false);
+    }
+  };
 
   useEffect(() => {
     loadAllAdminData();
@@ -225,7 +319,8 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
         allShifts,
         allQC,
         allAudits,
-        catalog
+        catalog,
+        allDevices
       ] = await Promise.all([
         getAllUsers(),
         getAllPatients(),
@@ -236,7 +331,8 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
         getAllShiftClosings(),
         getAllQCChecks(),
         getAllAuditLogs(),
-        getCustomTestsCatalog()
+        getCustomTestsCatalog(),
+        getDevices()
       ]);
 
       setUsers(allUsers);
@@ -245,6 +341,10 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
       setInvites(allInvites);
       setExpenses(allExpenses);
       setShifts(allShifts);
+      setDevices(allDevices);
+      if (allDevices.length > 0 && !selectedAutoDevice) {
+        setSelectedAutoDevice(allDevices[0].name);
+      }
       const getTime = (ts: any) => {
         if (!ts) return 0;
         if (ts.toDate) return ts.toDate().getTime();
@@ -262,6 +362,104 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
       console.error('Error loading admin data: ', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveUserEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    try {
+      await updateUserProfile(editingUser.id, {
+        nameAr: editUserNameAr,
+        email: editUserEmail,
+        username: editUserUsername
+      });
+      alert('تم تحديث بيانات حساب الموظف بنجاح!');
+      setEditingUser(null);
+      await loadAllAdminData();
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء تحديث حساب الموظف.');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('هل أنت متأكد من حذف حساب هذا العضو بالكامل من النظام؟ لا يمكن التراجع عن هذه العملية.')) return;
+    try {
+      await deleteUserProfile(userId);
+      alert('تم حذف حساب العضو بنجاح من قاعدة البيانات.');
+      await loadAllAdminData();
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء حذف الحساب.');
+    }
+  };
+
+  const handleSavePatientEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPatient) return;
+    try {
+      await updateDoc(doc(db, 'patients', editingPatient.id), {
+        nameAr: editPatientNameAr,
+        phone: editPatientPhone,
+        dob: editPatientDob
+      });
+      alert('تم تحديث ملف المريض بنجاح!');
+      setEditingPatient(null);
+      await loadAllAdminData();
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء تحديث ملف المريض.');
+    }
+  };
+
+  const handleDeletePatient = async (patientId: string) => {
+    if (!confirm('هل أنت متأكد من حذف ملف هذا المريض بالكامل من قاعدة البيانات؟')) return;
+    try {
+      await deletePatient(patientId);
+      alert('تم حذف ملف المريض بنجاح.');
+      await loadAllAdminData();
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء حذف ملف المريض.');
+    }
+  };
+
+  const handleAddDevice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDevName || !newDevPort) {
+      alert('يرجى ملء اسم الجهاز والمنفذ الخاص به.');
+      return;
+    }
+    const id = newDevName.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString().slice(-4);
+    try {
+      await addLabDevice({
+        id,
+        name: newDevName,
+        type: newDevType || 'محلل عينات عام',
+        protocol: newDevProtocol,
+        port: newDevPort,
+        status: 'online'
+      });
+      alert('تم إضافة الجهاز المخبري الجديد بنجاح مع بروتوكول الاتصال المفضل!');
+      setNewDevName('');
+      setNewDevType('');
+      await loadAllAdminData();
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء إضافة الجهاز.');
+    }
+  };
+
+  const handleDeleteDevice = async (deviceId: string) => {
+    if (!confirm('هل تريد فعلاً إلغاء ربط وحذف هذا الجهاز المخبري؟')) return;
+    try {
+      await deleteLabDevice(deviceId);
+      alert('تم إزالة وحذف الجهاز من اللوحة بنجاح.');
+      await loadAllAdminData();
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء حذف الجهاز.');
     }
   };
 
@@ -447,71 +645,73 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
     <div className="flex flex-col gap-6 font-sans text-right" dir="rtl">
       
       {/* PROFESSIONAL MULTI-TAB ADMIN CONTROLLER WRAPPER */}
-      <div className="flex flex-wrap bg-white p-1 rounded-2xl border border-slate-100 shadow-sm gap-1">
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          <span>مؤشرات الإدارة والمالية</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('verification')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'verification' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <BadgeCheck className="w-4 h-4" />
-          <span>الاعتماد والتعليق الطبي النهائي ({pendingVerificationCount})</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('qc')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'qc' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Cpu className="w-4 h-4" />
-          <span>جودة ومعايرة الأجهزة (QC)</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('staff')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'staff' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>شؤون الكادر والتراخيص</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('audit')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'audit' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <List className="w-4 h-4" />
-          <span>سجل التدقيق والورديات (Audit Trail)</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('pricing')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'pricing' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <DollarSign className="w-4 h-4" />
-          <span>تعديل لستة الأسعار والفحوصات</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('automation')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'automation' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Cpu className="w-4 h-4 text-rose-500 animate-pulse" />
-          <span>ميكنة الأجهزة والربط الإلكتروني (LIS)</span>
-        </button>
-      </div>
+      {!hideTabsHeader && (
+        <div className="flex flex-wrap bg-white p-1 rounded-2xl border border-slate-100 shadow-sm gap-1">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>مؤشرات الإدارة والمالية</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('verification')}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'verification' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <BadgeCheck className="w-4 h-4" />
+            <span>الاعتماد والتعليق الطبي النهائي ({pendingVerificationCount})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('qc')}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'qc' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Cpu className="w-4 h-4" />
+            <span>جودة ومعايرة الأجهزة (QC)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('staff')}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'staff' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>شؤون الكادر والتراخيص</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'audit' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <List className="w-4 h-4" />
+            <span>سجل التدقيق والورديات (Audit Trail)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pricing')}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'pricing' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <DollarSign className="w-4 h-4" />
+            <span>تعديل لستة الأسعار والفحوصات</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('patients_control')}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'patients_control' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-4 h-4 text-indigo-500" />
+            <span>إدارة حسابات وملفات المرضى</span>
+          </button>
+        </div>
+      )}
 
       {/* TAB SUB-PAGES */}
       {activeTab === 'dashboard' && (
@@ -573,39 +773,15 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
 
           {/* Graphical Analytics and summary */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-              <h3 className="font-extrabold text-slate-800 text-sm mb-4">إنتاجية العينات والاعتماد اليومي</h3>
-              <div className="w-full h-80 text-xs font-mono">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: 'السبت', 'طلب جديد': 2, 'معتمد': 1 },
-                    { name: 'الأحد', 'طلب جديد': 4, 'معتمد': 3 },
-                    { name: 'الإثنين', 'طلب جديد': 3, 'معتمد': 2 },
-                    { name: 'الثلاثاء', 'طلب جديد': 5, 'معتمد': 4 },
-                    { name: 'الأربعاء', 'طلب جديد': 7, 'معتمد': 6 },
-                    { name: 'الخميس', 'طلب جديد': 4, 'معتمد': 3 },
-                    { name: 'الجمعة', 'طلب جديد': 1, 'معتمد': 1 },
-                  ]} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="name" stroke="#94a3b8" />
-                    <YAxis stroke="#94a3b8" />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', color: '#fff' }} />
-                    <Bar dataKey="طلب جديد" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="معتمد" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="lg:col-span-4 flex flex-col gap-6">
+            <div className="lg:col-span-6 flex flex-col gap-6">
               <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col gap-4">
                 <h3 className="font-extrabold text-slate-800 text-sm border-b border-slate-100 pb-2">أبرز مؤشرات الجودة الطبيّة</h3>
                 <div className="flex flex-col gap-3 text-xs leading-relaxed">
-                  <div className="bg-rose-50 border border-rose-150 p-3 rounded-xl text-rose-800">
-                    ⚠️ <strong>العينات المرفوضة (0 عينات):</strong> لم يتم إرجاع أو تلفظ أي عينات مخبرية لهذا اليوم بفضل مراقبة الفصائل والباركود في محطة السحب الآلي.
+                  <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-slate-800">
+                    <strong>العينات المرفوضة:</strong> لا توجد عينات مرفوضة حالياً
                   </div>
-                  <div className="bg-indigo-50 border border-indigo-150 p-3 rounded-xl text-indigo-800">
-                    💡 <strong>أجهزة معطلة أو تنبيهات:</strong> كافة حساسات الكيمياء ونطاق الغدد والCobas تعمل بكفاءة تداول عالية %100.
+                  <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl text-slate-800">
+                    <strong>أجهزة معطلة أو تنبيهات:</strong> لا توجد تنبيهات حالياً
                   </div>
                 </div>
               </div>
@@ -620,7 +796,52 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
                       type="text"
                       value={labName}
                       onChange={(e) => setLabName(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs text-right font-medium"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs text-right font-medium mb-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">رقم الهاتف الأساسي</label>
+                    <input
+                      type="text"
+                      value={clinicSettings.phone}
+                      onChange={(e) => setClinicSettings({ ...clinicSettings, phone: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs text-right font-medium mb-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">رقم الواتساب</label>
+                    <input
+                      type="text"
+                      value={clinicSettings.whatsapp}
+                      onChange={(e) => setClinicSettings({ ...clinicSettings, whatsapp: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs text-right font-medium mb-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">رقم الاستقبال</label>
+                    <input
+                      type="text"
+                      value={clinicSettings.receptionDesk}
+                      onChange={(e) => setClinicSettings({ ...clinicSettings, receptionDesk: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs text-right font-medium mb-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان المختبر</label>
+                    <input
+                      type="text"
+                      value={clinicSettings.address}
+                      onChange={(e) => setClinicSettings({ ...clinicSettings, address: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs text-right font-medium mb-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">ساعات العمل</label>
+                    <input
+                      type="text"
+                      value={clinicSettings.workHours}
+                      onChange={(e) => setClinicSettings({ ...clinicSettings, workHours: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs text-right font-medium mb-3"
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2 mt-2">
@@ -986,7 +1207,8 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
                     <tr className="bg-slate-50 text-slate-600 border-b border-slate-100">
                       <th className="py-3 px-4 font-bold text-right">الاسم والملف</th>
                       <th className="py-3 px-4 font-bold text-center">نوع الترخيص</th>
-                      <th className="py-3 px-4 font-bold text-left">تعديل التصاريح</th>
+                      <th className="py-3 px-4 font-bold text-center">تعديل التصاريح</th>
+                      <th className="py-3 px-4 font-bold text-left">إجراءات التحكم</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1010,9 +1232,9 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
                              u.role === 'phlebotomist' ? 'أخصائي سحب العينات' : 'مريض مسجل'}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-left">
+                        <td className="py-3 px-4 text-center">
                           <select
-                            value={u.role}
+                            value={u.role || 'patient'}
                             disabled={updatingUserId === u.id}
                             onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
                             className="p-1 px-2 border rounded-lg focus:outline-none text-xs bg-white text-slate-700"
@@ -1024,11 +1246,87 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
                             <option value="admin">مدير معمل</option>
                           </select>
                         </td>
+                        <td className="py-3 px-4 text-left flex gap-1.5 justify-end">
+                          <button
+                            onClick={() => {
+                              setEditingUser(u);
+                              setEditUserNameAr(u.nameAr || '');
+                              setEditUserEmail(u.email || '');
+                              setEditUserUsername(u.username || '');
+                            }}
+                            className="bg-slate-100 hover:bg-indigo-50 text-slate-650 hover:text-indigo-600 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                          >
+                            تعديل
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="bg-slate-100 hover:bg-rose-50 text-rose-600 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                          >
+                            حذف الحساب
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+
+              {/* Inline User Edit Dialog Overlay */}
+              {editingUser && (
+                <div className="fixed inset-0 bg-slate-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl border border-slate-100 p-6 max-w-md w-full text-right" dir="rtl">
+                    <h3 className="font-extrabold text-slate-800 text-sm mb-4">تعديل حساب موظف الطاقم</h3>
+                    <form onSubmit={handleSaveUserEdit} className="flex flex-col gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">الاسم الكامل (بالعربية)</label>
+                        <input
+                          type="text"
+                          required
+                          value={editUserNameAr}
+                          onChange={(e) => setEditUserNameAr(e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">اسم المستخدم (المعرف الفريد)</label>
+                        <input
+                          type="text"
+                          required
+                          value={editUserUsername}
+                          onChange={(e) => setEditUserUsername(e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">البريد الإلكتروني المعتمد</label>
+                        <input
+                          type="email"
+                          required
+                          value={editUserEmail}
+                          onChange={(e) => setEditUserEmail(e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none text-xs text-left font-mono"
+                          dir="ltr"
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end mt-2">
+                        <button
+                          type="submit"
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-sm transition-colors cursor-pointer"
+                        >
+                          حفظ التعديلات
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingUser(null)}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-4 rounded-xl transition-colors cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Invited email list */}
@@ -1142,7 +1440,19 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
           
           {/* Catalog Listing */}
           <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <h3 className="font-extrabold text-slate-800 text-sm mb-4 border-b border-slate-50 pb-2">لائحة تسعير الخدمات الطبية الكيميائية</h3>
+            <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-2">
+              <h3 className="font-extrabold text-slate-800 text-sm">لائحة تسعير الخدمات الطبية الكيميائية</h3>
+              <button 
+                onClick={() => {
+                  setSelectedCatalogItem(null);
+                  setIsAddingNewTest(true);
+                }}
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg p-1 px-3 font-bold text-[10px] flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                إضافة فحص جديد
+              </button>
+            </div>
             
             <div className="divide-y divide-slate-100">
               {testsCatalog.map(item => (
@@ -1150,6 +1460,7 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
                   <div>
                     <button
                       onClick={() => {
+                        setIsAddingNewTest(false);
                         setSelectedCatalogItem(item);
                         setNewPrice(String(item.price));
                         setNewDescAr(item.descriptionAr || '');
@@ -1172,7 +1483,82 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
 
           {/* Pricing Action form workspace */}
           <div className="lg:col-span-5">
-            {selectedCatalogItem ? (
+            {isAddingNewTest ? (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-right">
+                <h3 className="font-extrabold text-slate-805 text-sm mb-4">إضافة فحص طبي جديد</h3>
+                
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-slate-705 mb-1.5">اسم الفحص (عربي) *</label>
+                  <input
+                    type="text"
+                    value={addTestNameAr}
+                    onChange={(e) => setAddTestNameAr(e.target.value)}
+                    className="w-full bg-white border border-slate-205 rounded-xl p-2.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold text-slate-800"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-slate-705 mb-1.5">اسم الفحص (إنجليزي) *</label>
+                  <input
+                    type="text"
+                    value={addTestNameEn}
+                    onChange={(e) => setAddTestNameEn(e.target.value)}
+                    dir="ltr"
+                    className="w-full bg-white border border-slate-205 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold text-slate-800 text-left"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-slate-705 mb-1.5">السعر المعياري *</label>
+                  <input
+                    type="number"
+                    value={addTestPrice}
+                    onChange={(e) => setAddTestPrice(e.target.value)}
+                    className="w-full bg-white border border-slate-205 rounded-xl p-2.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold text-slate-800"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-slate-705 mb-1.5">التصنيف الطبي</label>
+                  <select
+                    value={addTestCategory}
+                    onChange={(e) => setAddTestCategory(e.target.value)}
+                    className="w-full bg-white border border-slate-205 rounded-xl p-2.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold text-slate-800"
+                  >
+                    <option value="الكيمياء السريرية">الكيمياء السريرية</option>
+                    <option value="أمراض الدم">أمراض الدم</option>
+                    <option value="المناعة والأمصال">المناعة والأمصال</option>
+                    <option value="الهرمونات دلالات الأورام">الهرمونات دلالات الأورام</option>
+                    <option value="الأحياء الدقيقة">الأحياء الدقيقة</option>
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-slate-705 mb-1.5">التوصيف والإرشادات الطبية للفحص (لصالح المريض بالبوابة)</label>
+                  <textarea
+                    value={addTestDesc}
+                    onChange={(e) => setAddTestDesc(e.target.value)}
+                    className="w-full bg-white border border-slate-205 rounded-xl p-2.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500 h-28 placeholder-slate-400 font-medium"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddNewTest}
+                    disabled={submittingCatalog}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl shadow"
+                  >
+                    {submittingCatalog ? 'جاري الحفظ...' : 'إضافة الفحص الجديد'}
+                  </button>
+                  <button
+                    onClick={() => setIsAddingNewTest(false)}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 px-4 rounded-xl"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            ) : selectedCatalogItem ? (
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-right">
                 <h3 className="font-extrabold text-slate-805 text-sm mb-4">تعديل تسعيرة الفحص والمدى الطبيعي</h3>
                 
@@ -1233,232 +1619,226 @@ export function AdminPanel({ refreshTrigger, onRefresh }: { refreshTrigger: bool
         </div>
       )}
 
-      {/* --- TAB 7: LIS AUTOMATION & STRATEGIC ROADMAP --- */}
-      {activeTab === 'automation' && (
-        <div className="flex flex-col gap-6 text-right" dir="rtl">
-          
-          {/* Header Banner */}
-          <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-6 rounded-3xl border border-indigo-900 shadow-xl text-white flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* --- TAB 8: PATIENTS LIST & PATIENT PORTAL IMPERSONATION --- */}
+      {activeTab === 'patients_control' && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col gap-6 text-right">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-50 pb-4">
             <div>
-              <span className="bg-rose-500/20 text-rose-300 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
-                خطة التطوير والميكنة الشاملة والربط الإلكتروني (LIS)
-              </span>
-              <h2 className="text-xl font-black font-sans">بوابة الإشراف التقني والأتمتة الذكية للمعمل</h2>
-              <p className="text-xs text-slate-350 mt-1 max-w-2xl leading-relaxed font-sans">
-                نظام الربط الآلي ثنائي الاتجاه (Bidirectional Interfacing) يعمل على سحب النتائج الكيميائية والدموية مباشرة من الأجهزة الطبية إلى قاعدة البيانات السحابية لتقليص الأخطاء البشرية إلى 0% وتسريع استلام المريض لتقريره.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
-              <span className="text-xs font-bold text-emerald-400">بوابة الربط نشطة (Port 3000 Listening)</span>
+              <h3 className="font-extrabold text-slate-800 text-sm">لوحة الإشراف وإدارة ملفات وحسابات المرضى</h3>
+              <p className="text-[11px] text-slate-400 mt-1">عرض، وتعديل، وحذف الملفات الطبية الدائمة للمرضى، ومحاكاة بواباتهم الصحية لتأكيد التقارير.</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* Left Column: Development Roadmap */}
-            <div className="lg:col-span-7 flex flex-col gap-6">
-              
-              {/* Strategic Roadmap Card */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                <h3 className="font-extrabold text-slate-800 text-sm mb-4 pb-2 border-b border-slate-50 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-indigo-600" />
-                  <span>مراحل ميكنة المعمل الصارمة للربع الحالي</span>
-                </h3>
-
-                <div className="relative border-r-2 border-slate-100 mr-4 pr-6 flex flex-col gap-6">
-                  
-                  {/* Step 1 */}
-                  <div className="relative">
-                    <span className="absolute -right-[31px] top-1.5 w-4.5 h-4.5 rounded-full bg-emerald-500 border-4 border-white shadow flex items-center justify-center"></span>
-                    <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="bg-emerald-100 text-emerald-800 font-bold text-[9px] px-2 py-0.5 rounded-lg">مكتمل بالكامل (Active)</span>
-                        <h4 className="font-extrabold text-slate-800 text-xs">المرحلة الأولى: بروتوكول الربط الثنائي ثنائي الاتجاه (Bidirectional ASTM/HL7)</h4>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
-                        تمت المكاملة مع نظام قواعد البيانات السحابية Supabase لتلقي إرسال الأجهزة مباشرة. تم إلغاء استخدام الأوراق وربط قراءات أجهزة السحب مع قارئ الباركود عند استقبال العينات.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step 2 */}
-                  <div className="relative">
-                    <span className="absolute -right-[31px] top-1.5 w-4.5 h-4.5 rounded-full bg-indigo-500 border-4 border-white shadow flex items-center justify-center"></span>
-                    <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="bg-indigo-100 text-indigo-800 font-bold text-[9px] px-2 py-0.5 rounded-lg">قيد التشغيل والتطبيق</span>
-                        <h4 className="font-extrabold text-slate-800 text-xs">المرحلة الثانية: الربط السحابي ومراقبة الجودة التلقائية (Real-time QC Analyzer Logs)</h4>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
-                        ربط عينات المراقبة المعيارية (QC Validation) لكل جهاز ومطابقتها تلقائياً مع معايير ويستغارد (Westgard rules) لمنع اعتماد أي تحليل إذا كان الجهاز غير معاير بشكل دقيق.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step 3 */}
-                  <div className="relative">
-                    <span className="absolute -right-[31px] top-1.5 w-4.5 h-4.5 rounded-full bg-amber-500 border-4 border-white shadow flex items-center justify-center animate-pulse"></span>
-                    <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="bg-amber-100 text-amber-800 font-bold text-[9px] px-2 py-0.5 rounded-lg">بدء تطبيق الميكنة</span>
-                        <h4 className="font-extrabold text-slate-800 text-xs">المرحلة الثالثة: محرك الفحص البيولوجي الذكي والاعتماد الفوري</h4>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
-                        تحليل مدى الترابط الحيوي (Biological Plausibility Engine) للنتائج تلقائياً (مثال: الربط الذكي للتراكمي مع السكر الصائم في الدم) وإبراق التنبيهات للأطباء فورا عبر نظام الإشعار الفوري.
-                      </p>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Analyzer Hardware Connected State */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                <h3 className="font-extrabold text-slate-800 text-sm mb-4 pb-2 border-b border-slate-50">
-                  الأجهزة المخبرية الموصلة بقنوات LIS الحالية
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-start">
-                    <div className="flex items-center gap-1.5 text-emerald-650 text-emerald-600">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                      <span className="text-[10px] font-bold">متصل بـ LIS</span>
-                    </div>
-                    <div className="text-right">
-                      <h4 className="font-bold text-xs text-slate-800">Sysmex XN-350</h4>
-                      <p className="text-[9px] text-slate-400 font-mono mt-0.5">CBC Hematology Analyzer</p>
-                      <p className="text-[10px] text-indigo-650 font-semibold mt-2">القناة: COM4 / RS232</p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-start">
-                    <div className="flex items-center gap-1.5 text-emerald-650 text-emerald-600">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                      <span className="text-[10px] font-bold">متصل بـ LIS</span>
-                    </div>
-                    <div className="text-right">
-                      <h4 className="font-bold text-xs text-slate-800">Roche Cobas e411</h4>
-                      <p className="text-[9px] text-slate-400 font-mono mt-0.5">Hormone Immunoassay System</p>
-                      <p className="text-[10px] text-indigo-650 font-semibold mt-2">القناة: TCP/IP 192.168.1.102</p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-start">
-                    <div className="flex items-center gap-1.5 text-emerald-650 text-emerald-600">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                      <span className="text-[10px] font-bold">متصل بـ LIS</span>
-                    </div>
-                    <div className="text-right">
-                      <h4 className="font-bold text-xs text-slate-800">Abbott Alinity c</h4>
-                      <p className="text-[9px] text-slate-400 font-mono mt-0.5">Clinical Chemistry Analyzer</p>
-                      <p className="text-[10px] text-indigo-650 font-semibold mt-2">القناة: TCP/IP 192.168.1.103</p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-start">
-                    <div className="flex items-center gap-1.5 text-emerald-650 text-emerald-600">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                      <span className="text-[10px] font-bold">متصل بـ LIS</span>
-                    </div>
-                    <div className="text-right">
-                      <h4 className="font-bold text-xs text-slate-800">Mindray BS-240</h4>
-                      <p className="text-[9px] text-slate-400 font-mono mt-0.5">Biochemistry Analyzer</p>
-                      <p className="text-[10px] text-indigo-650 font-semibold mt-2">القناة: COM2 / RS232</p>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-            </div>
-
-            {/* Right Column: ASTM Simulator */}
-            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-right flex flex-col gap-4">
-              <div>
-                <h3 className="font-extrabold text-slate-805 text-sm">محاكي تدفق قراءات الأجهزة الذكي (ASTM Bidirectional Test)</h3>
-                <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                  استخدم هذا المحاكي لاختبار الربط والتعشيق التقني المباشر لبروتوكول ASTM. سيقوم المحاكي بإرسال استعلام الجهاز وقراءة المعالجة وتوليد السجل الفوري للتراسل.
-                </p>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">اختر الجهاز لعمل الفحص ومحاكاة الربط *</label>
-                  <select
-                    value={selectedAutoDevice}
-                    onChange={(e) => setSelectedAutoDevice(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
-                  >
-                    <option value="Sysmex XN-350">Sysmex XN-350 (صورة دم كاملة - CBC)</option>
-                    <option value="Roche Cobas e411">Roche Cobas e411 (تحليل غدد وهرمونات)</option>
-                    <option value="Abbott Alinity c">Abbott Alinity c (وظائف كلى وكبد)</option>
-                    <option value="Mindray BS-240">Mindray BS-240 (سكر تراكمي ودهون)</option>
-                  </select>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setLisStatus('handshaking');
-                    setLisLogs([
-                      `[${new Date().toLocaleTimeString()}] ENQ -> LIS Broker sending ENQ byte to port 3000...`,
-                      `[${new Date().toLocaleTimeString()}] Handshaking initiated with ${selectedAutoDevice}...`
-                    ]);
-
-                    setTimeout(() => {
-                      setLisLogs(prev => [
-                        ...prev,
-                        `[${new Date().toLocaleTimeString()}] ACK -> Analyzer responded with acknowledgement.`,
-                        `[${new Date().toLocaleTimeString()}] H|1|\\^&|||LIS_BROKER|||||||P|1|20260624093000`,
-                        `[${new Date().toLocaleTimeString()}] O|1|SPE_TEST^452093||^^^ALL|R|20260624093215`,
-                        `[${new Date().toLocaleTimeString()}] R|1|^^^PARAM_VAL|VERIFIED|N||||||F`
-                      ]);
-                    }, 800);
-
-                    setTimeout(() => {
-                      setLisLogs(prev => [
-                        ...prev,
-                        `[${new Date().toLocaleTimeString()}] EOT -> End of Transmission received. Connection cleanly released.`,
-                        `[${new Date().toLocaleTimeString()}] SUCCESS: Handshake completed with ${selectedAutoDevice}. Bi-directional link verified green.`
-                      ]);
-                      setLisStatus('success');
-                    }, 1800);
-                  }}
-                  disabled={lisStatus === 'handshaking'}
-                  className={`w-full text-white font-bold text-xs py-2.5 rounded-lg transition-all shadow flex items-center justify-center gap-1.5 ${
-                    lisStatus === 'handshaking' ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
-                  }`}
-                >
-                  <Cpu className="w-4 h-4 animate-spin-slow" />
-                  <span>{lisStatus === 'handshaking' ? 'جاري عمل التراسل الإشاري (ASTM)...' : 'بدء فحص الاتصال ومزامنة القراءات'}</span>
-                </button>
-              </div>
-
-              {/* Live Terminal logs */}
-              {lisLogs.length > 0 && (
-                <div className="flex flex-col gap-1.5 text-left font-mono text-[9px] p-3 bg-slate-950 text-emerald-400 rounded-xl border border-slate-900 max-h-56 overflow-y-auto" dir="ltr">
-                  {lisLogs.map((log, index) => (
-                    <div key={index} className="leading-relaxed border-b border-emerald-950/20 pb-0.5">
-                      {log}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {lisStatus === 'success' && (
-                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl text-[10px] text-emerald-800 leading-normal flex items-center gap-2">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping shrink-0"></span>
-                  <span>✓ <strong>اتصال مثالي:</strong> تمت عملية المعايرة والمزامنة بنجاح مع الجهاز {selectedAutoDevice}، وبروتوكول LIS خاضع للمراقبة التلقائية بالكامل الآن.</span>
-                </div>
-              )}
-
-            </div>
-
-          </div>
-
+          <PatientsControlSubpage
+            patients={patients}
+            onEditPatient={(pat) => {
+              setEditingPatient(pat);
+              setEditPatientNameAr(pat.nameAr || '');
+              setEditPatientPhone(pat.phone || '');
+              const dobStr = pat.dob ? (pat.dob instanceof Date ? pat.dob.toISOString().split('T')[0] : (pat.dob as any).toDate ? (pat.dob as any).toDate().toISOString().split('T')[0] : String(pat.dob).split('T')[0]) : '';
+              setEditPatientDob(dobStr);
+            }}
+            onDeletePatient={handleDeletePatient}
+            onImpersonatePatient={(phone) => {
+              setImpersonatedPatientPhone(phone);
+              setShowImpersonateModal(true);
+            }}
+            onDownloadPatientData={(pat) => {
+              const fileContent = JSON.stringify(pat, null, 2);
+              const blob = new Blob([fileContent], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `patient_${pat.phone}_data.json`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+          />
         </div>
       )}
 
+      {/* Inline Patient Edit Dialog Overlay */}
+      {editingPatient && (
+        <div className="fixed inset-0 bg-slate-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 max-w-md w-full text-right" dir="rtl">
+            <h3 className="font-extrabold text-slate-800 text-sm mb-4">تعديل الملف الطبي للمريض</h3>
+            <form onSubmit={handleSavePatientEdit} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">الاسم الكامل (بالعربية)</label>
+                <input
+                  type="text"
+                  required
+                  value={editPatientNameAr}
+                  onChange={(e) => setEditPatientNameAr(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">رقم الهاتف (المسجل به البوابة)</label>
+                <input
+                  type="text"
+                  required
+                  value={editPatientPhone}
+                  onChange={(e) => setEditPatientPhone(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none text-xs font-mono text-left"
+                  dir="ltr"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">تاريخ الميلاد</label>
+                <input
+                  type="date"
+                  required
+                  value={editPatientDob}
+                  onChange={(e) => setEditPatientDob(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none text-xs font-mono"
+                />
+              </div>
+              <div className="flex gap-2 justify-end mt-2">
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-sm transition-colors cursor-pointer"
+                >
+                  حفظ التعديلات
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingPatient(null)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-4 rounded-xl transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Patient Portal Impersonation Modal */}
+      {showImpersonateModal && impersonatedPatientPhone && (
+        <div className="fixed inset-0 bg-slate-900 bg-opacity-70 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 max-w-5xl w-full text-right my-8" dir="rtl">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+              <button
+                onClick={() => {
+                  setShowImpersonateModal(false);
+                  setImpersonatedPatientPhone(null);
+                }}
+                className="bg-rose-50 text-rose-600 hover:bg-rose-100 p-2 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm">محاكاة ورؤية بوابة المريض</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">رقم هاتف المريض المحاكى: <span className="font-mono text-indigo-600 font-bold">{impersonatedPatientPhone}</span></p>
+              </div>
+            </div>
+            
+            <div className="max-h-[70vh] overflow-y-auto p-2 bg-[#fafbfc] rounded-2xl border border-slate-100">
+              <PatientDashboard impersonatedPhone={impersonatedPatientPhone} />
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+function PatientsControlSubpage({
+  patients,
+  onEditPatient,
+  onDeletePatient,
+  onImpersonatePatient,
+  onDownloadPatientData,
+}: {
+  patients: Patient[];
+  onEditPatient: (pat: Patient) => void;
+  onDeletePatient: (id: string) => void;
+  onImpersonatePatient: (phone: string) => void;
+  onDownloadPatientData: (pat: Patient) => void;
+}) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredPatients = patients.filter((pat) => {
+    const nameMatch = pat.nameAr?.toLowerCase().includes(searchTerm.toLowerCase());
+    const phoneMatch = pat.phone?.includes(searchTerm);
+    return nameMatch || phoneMatch;
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2 max-w-md mr-auto w-full">
+        <input
+          type="text"
+          placeholder="ابحث باسم المريض أو رقم الهاتف..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none text-xs text-right"
+        />
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-100 shadow-sm">
+        <table className="w-full text-right border-collapse text-xs">
+          <thead>
+            <tr className="bg-slate-50 text-slate-600 border-b border-indigo-50">
+              <th className="py-3 px-4 font-bold text-right">اسم المريض</th>
+              <th className="py-3 px-4 font-bold text-center">رقم الهاتف</th>
+              <th className="py-3 px-4 font-bold text-center">تاريخ الميلاد</th>
+              <th className="py-3 px-4 font-bold text-left">التحكم والعمليات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredPatients.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-slate-400 italic">
+                  لم يتم العثور على أي مرضى يطابقون هذا البحث.
+                </td>
+              </tr>
+            ) : (
+              filteredPatients.map((pat) => (
+                <tr key={pat.id} className="hover:bg-slate-50 transition-colors border-b border-slate-50">
+                  <td className="py-3 px-4 font-bold text-slate-800">{pat.nameAr}</td>
+                  <td className="py-3 px-4 text-center font-mono text-slate-600">{pat.phone}</td>
+                  <td className="py-3 px-4 text-center font-mono text-slate-500">
+                    {pat.dob ? (pat.dob instanceof Date ? pat.dob.toLocaleDateString('ar-EG') : (pat.dob as any).toDate ? (pat.dob as any).toDate().toLocaleDateString('ar-EG') : String(pat.dob).split('T')[0]) : 'غير مسجل'}
+                  </td>
+                  <td className="py-3 px-4 text-left flex gap-1.5 justify-end">
+                    <button
+                      onClick={() => onDownloadPatientData(pat)}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                      title="تحميل ملف المريض محلياً"
+                    >
+                      <Download className="w-3 h-3" />
+                      تحميل
+                    </button>
+                    <button
+                      onClick={() => onImpersonatePatient(pat.phone)}
+                      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      بوابة المريض
+                    </button>
+                    <button
+                      onClick={() => onEditPatient(pat)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      تعديل
+                    </button>
+                    <button
+                      onClick={() => onDeletePatient(pat.id)}
+                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      حذف
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

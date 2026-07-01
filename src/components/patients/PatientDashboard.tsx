@@ -12,6 +12,7 @@ import {
   TestCatalogItem,
   getCustomTestsCatalog
 } from '../../lib/db';
+import { getClinicSettings, ClinicSettings } from '../../lib/settings';
 import { Patient, Test } from '../../types';
 import { auth as supabaseAuth } from '../../lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -46,20 +47,14 @@ const OFFERS_AND_DISCOUNTS = [
   { title: "العرض الفضي لمتابعي الموقع الإلكتروني", rate: "فحص مجاني للسكر الصائم", code: "WEBGLU", descAr: "احصل على تحليل مجاني لمستوى الجلوكوز بالدم عند حجز فحص كيميائي متكامل عبر البوابة." }
 ];
 
-const LABORATORY_CONTACTS = {
-  phone: "920012345",
-  whatsapp: "0554321098",
-  receptionDesk: "0554321099",
-  address: "شارع التخصصي، حي السليمانية، الرياض 12223، المملكة العربية السعودية",
-  workHours: "السبت - الخميس: 7:00 ص - 11:00 م | الجمعة: 1:00 م - 9:00 م"
-};
-
-export function PatientDashboard() {
+export function PatientDashboard({ impersonatedPhone }: { impersonatedPhone?: string | null } = {}) {
   const [patientRecords, setPatientRecords] = useState<Patient[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Patient | null>(null);
   const [patientTests, setPatientTests] = useState<Test[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(getClinicSettings());
+
   
   // Home Visits state
   const [myHomeVisits, setMyHomeVisits] = useState<any[]>([]);
@@ -75,7 +70,7 @@ export function PatientDashboard() {
   const [actionLoading, setActionLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
+ 
   // Guest-specific status and inputs
   const [guestTab, setGuestTab] = useState<'lookup' | 'booking' | 'contacts'>('lookup');
   const [customCatalog, setCustomCatalog] = useState<TestCatalogItem[]>([]);
@@ -84,12 +79,12 @@ export function PatientDashboard() {
   const [guestTest, setGuestTest] = useState('');
   const [guestDate, setGuestDate] = useState('');
   const [guestTime, setGuestTime] = useState('09:00');
-
+ 
   useEffect(() => {
     loadPatientFiles();
     fetchCustomCatalog();
-  }, []);
-
+  }, [impersonatedPhone]);
+ 
   const fetchCustomCatalog = async () => {
     try {
       const items = await getCustomTestsCatalog();
@@ -98,12 +93,12 @@ export function PatientDashboard() {
       console.error("Error loading custom test catalog:", err);
     }
   };
-
+ 
   const mergedCatalog = [
     ...customCatalog,
     ...LAB_TESTS_CATALOG.filter(c => !customCatalog.some(cc => cc.id === c.id))
   ];
-
+ 
   const handleGuestBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guestName || !guestPhone || !guestTest || !guestDate || !guestTime) {
@@ -135,28 +130,37 @@ export function PatientDashboard() {
       setActionLoading(false);
     }
   };
-
+ 
   const loadPatientFiles = async () => {
     try {
       setLoading(true);
-      const currentUser = supabaseAuth.currentUser;
-      if (!currentUser) return;
       
-      // Look up our profile doc mapping phone
-      const userDoc = await getUserProfile(currentUser.uid);
-      
-      const phoneToMatch = userDoc?.phone || '';
-
+      let phoneToMatch = '';
+      if (impersonatedPhone) {
+        phoneToMatch = impersonatedPhone;
+      } else {
+        const currentUser = supabaseAuth.currentUser;
+        if (!currentUser) return;
+        // Look up our profile doc mapping phone
+        const userDoc = await getUserProfile(currentUser.uid);
+        phoneToMatch = userDoc?.phone || '';
+      }
+ 
       let matchedPatients: Patient[] = [];
       if (phoneToMatch) {
         matchedPatients = await getPatientsByPhone(phoneToMatch);
       }
-
+ 
       if (matchedPatients.length > 0) {
         setPatientRecords(matchedPatients);
         const active = matchedPatients[0];
         setSelectedRecord(active);
         await loadTestsAndAppointments(active);
+      } else {
+        setPatientRecords([]);
+        setSelectedRecord(null);
+        setPatientTests([]);
+        setAppointments([]);
       }
     } catch (err) {
       console.error(err);
@@ -538,7 +542,7 @@ export function PatientDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-mono text-xs font-extrabold text-indigo-600 block">{LABORATORY_CONTACTS.phone}</span>
+                  <span className="font-mono text-xs font-extrabold text-indigo-600 block" dir="ltr">{clinicSettings.phone}</span>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 block">الرقم الموحد المعتمد</span>
                     <strong className="text-slate-800 text-xs font-bold">الاتصال الهاتفي 📞</strong>
@@ -546,7 +550,7 @@ export function PatientDashboard() {
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-mono text-xs font-extrabold text-teal-600 block">{LABORATORY_CONTACTS.whatsapp}</span>
+                  <span className="font-mono text-xs font-extrabold text-teal-600 block" dir="ltr">{clinicSettings.whatsapp}</span>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 block">محادثة واتساب الفورية</span>
                     <strong className="text-slate-8 /0 text-xs font-bold">خدمات الواتساب 💬</strong>
@@ -554,7 +558,7 @@ export function PatientDashboard() {
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-mono text-xs font-extrabold text-slate-600 block">{LABORATORY_CONTACTS.receptionDesk}</span>
+                  <span className="font-mono text-xs font-extrabold text-slate-600 block" dir="ltr">{clinicSettings.receptionDesk}</span>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 block">مكتب استقبال التحاليل</span>
                     <strong className="text-slate-800 text-xs font-bold">حجز الزيارات المنزلية 🏡</strong>
@@ -572,9 +576,9 @@ export function PatientDashboard() {
 
               <div className="p-4 bg-indigo-50 border border-indigo-100/40 rounded-xl">
                 <span className="text-[10px] text-indigo-700 block mb-1 font-bold">عنوان وموقع المختبر الرئيسي:</span>
-                <p className="text-xs text-slate-700 leading-relaxed font-semibold">{LABORATORY_CONTACTS.address}</p>
+                <p className="text-xs text-slate-700 leading-relaxed font-semibold">{clinicSettings.address}</p>
                 <div className="text-[10.5px] text-slate-450 mt-1 flex justify-end gap-1.5 font-medium">
-                  <span>{LABORATORY_CONTACTS.workHours}</span>
+                  <span>{clinicSettings.workHours}</span>
                   <strong>أوقات العمل:</strong>
                 </div>
               </div>
