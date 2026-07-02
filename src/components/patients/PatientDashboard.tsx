@@ -10,7 +10,8 @@ import {
   LAB_TESTS_CATALOG,
   Appointment,
   TestCatalogItem,
-  getCustomTestsCatalog
+  getCustomTestsCatalog,
+  addPatient
 } from '../../lib/db';
 import { getClinicSettings, ClinicSettings } from '../../lib/settings';
 import { Patient, Test } from '../../types';
@@ -136,19 +137,42 @@ export function PatientDashboard({ impersonatedPhone }: { impersonatedPhone?: st
       setLoading(true);
       
       let phoneToMatch = '';
+      let userDoc: any = null;
       if (impersonatedPhone) {
         phoneToMatch = impersonatedPhone;
       } else {
         const currentUser = supabaseAuth.currentUser;
         if (!currentUser) return;
         // Look up our profile doc mapping phone
-        const userDoc = await getUserProfile(currentUser.uid);
+        userDoc = await getUserProfile(currentUser.uid);
         phoneToMatch = userDoc?.phone || '';
       }
  
       let matchedPatients: Patient[] = [];
       if (phoneToMatch) {
         matchedPatients = await getPatientsByPhone(phoneToMatch);
+      }
+
+      // If user is logged in, has a phone, but no patient record exists under that phone,
+      // let's auto-create one so they are immediately recognized!
+      if (phoneToMatch && matchedPatients.length === 0 && !impersonatedPhone) {
+        try {
+          const authUser = supabaseAuth.currentUser;
+          if (authUser) {
+            await addPatient({
+              name: userDoc?.name || authUser.email || 'Patient',
+              nameAr: userDoc?.nameAr || userDoc?.name || 'مريض مسجل',
+              phone: phoneToMatch,
+              gender: 'male',
+              dob: new Date('1995-01-01'),
+              address: '',
+            });
+            // Fetch again
+            matchedPatients = await getPatientsByPhone(phoneToMatch);
+          }
+        } catch (autoErr) {
+          console.error("Failed to auto-create patient record for logged-in user:", autoErr);
+        }
       }
  
       if (matchedPatients.length > 0) {
@@ -501,23 +525,31 @@ export function PatientDashboard({ impersonatedPhone }: { impersonatedPhone?: st
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">وقت الزيارة المناسب</label>
-                  <select
+                  <label className="block text-xs font-bold text-slate-700 mb-1">وقت الزيارة المناسب (أدخل يدوياً أو اختر) ⏱️</label>
+                  <input
+                    type="text"
                     required
                     value={guestTime}
                     onChange={(e) => setGuestTime(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs"
-                  >
-                    <option value="08:00">08:00 صباحاً</option>
-                    <option value="09:00">09:00 صباحاً</option>
-                    <option value="10:00">10:00 صباحاً</option>
-                    <option value="11:00">11:00 صباحاً</option>
-                    <option value="13:00">01:00 مساءً</option>
-                    <option value="14:00">02:00 مساءً</option>
-                    <option value="15:00">03:00 مساءً</option>
-                    <option value="16:00">04:00 مساءً</option>
-                    <option value="17:00">05:00 مساءً</option>
-                  </select>
+                    placeholder="مثال: 09:30 صباحاً أو 05:00 مساءً"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-600 focus:outline-none text-xs text-right font-medium"
+                  />
+                  <div className="flex flex-wrap gap-1 mt-1.5 justify-end">
+                    {['08:00 صباحاً', '09:30 صباحاً', '10:00 صباحاً', '11:15 صباحاً', '01:00 مساءً', '03:30 مساءً', '05:00 مساءً', '07:45 مساءً'].map((timeChip) => (
+                      <button
+                        key={timeChip}
+                        type="button"
+                        onClick={() => setGuestTime(timeChip)}
+                        className={`px-2 py-0.5 text-[9px] rounded-lg transition-all border cursor-pointer ${
+                          guestTime === timeChip 
+                            ? 'bg-indigo-600 text-white border-indigo-600 font-bold' 
+                            : 'bg-slate-50 text-slate-505 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {timeChip}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="md:col-span-2 mt-2">
@@ -942,26 +974,31 @@ export function PatientDashboard({ impersonatedPhone }: { impersonatedPhone?: st
                       
                       {/* Time */}
                       <div>
-                        <label className="block text-slate-700 font-bold text-xs mb-2 text-right">الوقت المفضل للزيارة</label>
-                        <select
+                        <label className="block text-slate-700 font-bold text-xs mb-2 text-right">الوقت المفضل للزيارة (أدخل يدوياً بدقة أو اختر) ⏱️</label>
+                        <input
+                          type="text"
                           value={bookingTime}
                           onChange={(e) => setBookingTime(e.target.value)}
                           required
-                          className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-center font-mono"
-                        >
-                          <option value="08:00">08:00 صباحاً</option>
-                          <option value="09:00">09:00 صباحاً</option>
-                          <option value="10:00">10:00 صباحاً</option>
-                          <option value="11:00">11:00 صباحاً</option>
-                          <option value="13:00">01:00 مساءً</option>
-                          <option value="14:00">02:00 مساءً</option>
-                          <option value="15:00">03:00 مساءً</option>
-                          <option value="16:00">04:00 مساءً</option>
-                          <option value="17:00">05:00 مساءً</option>
-                          <option value="18:00">06:00 مساءً</option>
-                          <option value="19:00">07:00 مساءً</option>
-                          <option value="20:00">08:00 مساءً</option>
-                        </select>
+                          placeholder="مثال: 10:30 صباحاً أو 04:15 مساءً"
+                          className="w-full p-3 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-right font-medium"
+                        />
+                        <div className="flex flex-wrap gap-1.5 mt-2 justify-end">
+                          {['08:00 صباحاً', '09:30 صباحاً', '10:00 صباحاً', '11:15 صباحاً', '01:00 مساءً', '03:30 مساءً', '05:00 مساءً', '07:45 مساءً'].map((timeChip) => (
+                            <button
+                              key={timeChip}
+                              type="button"
+                              onClick={() => setBookingTime(timeChip)}
+                              className={`px-2 py-0.5 text-[9.5px] rounded-lg transition-all border cursor-pointer ${
+                                bookingTime === timeChip 
+                                  ? 'bg-indigo-600 text-white border-indigo-600 font-bold' 
+                                  : 'bg-slate-50 text-slate-600 border-slate-205 hover:bg-slate-100'
+                              }`}
+                            >
+                              {timeChip}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 

@@ -36,7 +36,7 @@ export function DashboardPage() {
   // Collapsible sidebar & Tab controls matching user's design style
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [sidebarTab, setSidebarTab] = useState<'dashboard' | 'patient_portal'>('dashboard');
-  const [activeAdminTab, setActiveAdminTab] = useState<'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation' | 'patients_control'>('dashboard');
+  const [activeAdminTab, setActiveAdminTab] = useState<'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation' | 'patients_control' | 'sdlc'>('dashboard');
   
   useEffect(() => {
     loadProfile();
@@ -348,6 +348,22 @@ export function DashboardPage() {
               >
                 <Users size={18} className={`shrink-0 ${sidebarTab === 'dashboard' && activeAdminTab === 'patients_control' ? 'text-white' : 'text-gray-500'}`} />
                 {isSidebarOpen && <span className="truncate">حسابات وملفات المرضى</span>}
+              </button>
+
+              <button
+                onClick={() => {
+                  setSidebarTab('dashboard');
+                  setActiveAdminTab('sdlc');
+                }}
+                className={`w-full flex items-center rounded-xl text-xs font-bold transition-all cursor-pointer py-2.5 ${
+                  isSidebarOpen ? 'justify-start gap-3 px-3' : 'justify-center px-1'
+                } ${
+                  sidebarTab === 'dashboard' && activeAdminTab === 'sdlc' ? 'bg-gray-950 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100/80 hover:text-gray-950'
+                }`}
+                title="نظام العمل ومتابعة الإصدارات SDLC"
+              >
+                <Layers size={18} className={`shrink-0 ${sidebarTab === 'dashboard' && activeAdminTab === 'sdlc' ? 'text-white' : 'text-gray-500'}`} />
+                {isSidebarOpen && <span className="truncate">نظام العمل والإصدارات SDLC</span>}
               </button>
 
               <div className="h-px bg-gray-200/60 my-4 shrink-0" />

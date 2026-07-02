@@ -134,6 +134,43 @@ export function PatientWorkspace({ refreshTrigger, onRefresh }: { refreshTrigger
     }
   };
 
+  const handleSaveInvoiceToPhone = (invoice: any) => {
+    if (!invoice) return;
+    const receiptText = `========================================
+      سند قبض مالي - مختبر العيادة الموحد
+========================================
+رقم السند: ID-${invoice.id.toUpperCase()}
+اسم المريض: ${invoice.patientNameAr}
+رقم الجوال: ${invoice.patientPhone}
+----------------------------------------
+الفحص الطبي: ${invoice.testType}
+طريقة الدفع: ${invoice.paymentType}
+التاريخ والوقت: ${invoice.timestamp}
+----------------------------------------
+الصافي المقبوض: ${invoice.finalPrice} ج.م
+========================================
+نشكركم على ثقتكم بمختبرنا. تم حفظ الإيصال وتأكيد المزامنة التلقائية مع السحابة.
+========================================`;
+
+    const blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `receipt_${invoice.id.substring(0, 8)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    pushNotification({
+      title: 'Receipt Saved Successfully',
+      titleAr: '💾 تم حفظ الإيصال على الهاتف بنجاح',
+      message: 'The receipt has been downloaded as a text file.',
+      messageAr: 'تم تصدير وحفظ سند القبض المالي بنجاح كملف نصي على جهازك وهو آمن ومزامن تماماً مع قاعدة البيانات السحابية.',
+      type: 'success'
+    });
+  };
+
   const filteredPatients = patients.filter(p => {
     const text = (p.nameAr + ' ' + p.name + ' ' + p.phone + ' ' + p.phone).toLowerCase();
     return text.includes(searchTerm.toLowerCase());
@@ -433,12 +470,10 @@ export function PatientWorkspace({ refreshTrigger, onRefresh }: { refreshTrigger
 
           <div className="flex gap-2.5 mt-2">
             <button
-              onClick={() => {
-                window.print();
-              }}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded-lg text-xs font-bold"
+              onClick={() => handleSaveInvoiceToPhone(activeInvoice)}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              طباعة الإيصال ⎙
+              <span>حفظ إيصال الدفع على الهاتف 💾</span>
             </button>
             <button
               onClick={() => setActiveInvoice(null)}
@@ -527,6 +562,17 @@ export function PatientWorkspace({ refreshTrigger, onRefresh }: { refreshTrigger
           <div className="lg:col-span-8">
             {selectedPatient ? (
               <div className="flex flex-col gap-6">
+                
+                {/* Back button to go back to patient selection / other records */}
+                <div className="flex justify-between items-center bg-white px-4 py-3 rounded-2xl border border-slate-100 shadow-sm">
+                  <button
+                    onClick={() => setSelectedPatient(null)}
+                    className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200"
+                  >
+                    <span>الرجوع والعودة لقائمة المرضى ↩</span>
+                  </button>
+                  <span className="text-[11px] text-slate-400 font-bold">ملف المريض النشط حالياً</span>
+                </div>
                 
                 {/* Patient Profile Card & LOYALTY STATUS */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 relative overflow-hidden">

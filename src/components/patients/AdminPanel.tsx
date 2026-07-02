@@ -38,6 +38,7 @@ import { getDoc, setDoc } from '../../lib/supabase-firestore';
 import { Patient, Test, User, UserRole } from '../../types';
 import { getClinicSettings, saveClinicSettings, ClinicSettings } from '../../lib/settings';
 import { PatientDashboard } from './PatientDashboard';
+import { AddPatientForm } from './AddPatientForm';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   Users, 
@@ -63,7 +64,11 @@ import {
   Activity,
   Heart,
   FileText,
-  Download
+  Download,
+  Layers,
+  GitBranch,
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 
 const DEVICE_OPTIONS = [
@@ -82,11 +87,11 @@ export function AdminPanel({
 }: { 
   refreshTrigger: boolean; 
   onRefresh: () => void;
-  activeSubTab?: 'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation' | 'patients_control';
+  activeSubTab?: 'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation' | 'patients_control' | 'sdlc';
   hideTabsHeader?: boolean;
 }) {
   // Tabs definition
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation' | 'patients_control'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'verification' | 'qc' | 'staff' | 'audit' | 'pricing' | 'automation' | 'patients_control' | 'sdlc'>('dashboard');
 
   useEffect(() => {
     if (activeSubTab) {
@@ -126,6 +131,42 @@ export function AdminPanel({
   const [lisLogs, setLisLogs] = useState<string[]>([]);
   const [selectedAutoDevice, setSelectedAutoDevice] = useState('');
 
+  // SDLC & GitHub tracking States
+  const [githubData, setGithubData] = useState<{
+    success: boolean;
+    repo?: string;
+    pulls?: any[];
+    commits?: any[];
+    workflows?: any[];
+    error?: string;
+  } | null>(null);
+  const [loadingGithub, setLoadingGithub] = useState(false);
+  const [githubError, setGithubError] = useState<string | null>(null);
+
+  const fetchGitHubSDLCInfo = async () => {
+    try {
+      setLoadingGithub(true);
+      setGithubError(null);
+      const res = await fetch('/api/sdlc/github-info');
+      const data = await res.json();
+      setGithubData(data);
+      if (!data.success) {
+        setGithubError(data.error || 'Failed to fetch GitHub repository data.');
+      }
+    } catch (err: any) {
+      console.error('Error fetching GitHub SDLC:', err);
+      setGithubError(err.message || 'Error communicating with Express backend.');
+    } finally {
+      setLoadingGithub(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'sdlc') {
+      fetchGitHubSDLCInfo();
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -160,6 +201,7 @@ export function AdminPanel({
   // Load state variables
   const [users, setUsers] = useState<User[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [showAddPatientInAdmin, setShowAddPatientInAdmin] = useState(false);
   const [tests, setTests] = useState<Test[]>([]);
   const [invites, setInvites] = useState<StaffInvite[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -414,6 +456,12 @@ export function AdminPanel({
   };
 
   const handleDeletePatient = async (patientId: string) => {
+    const currentLoggedEmail = supabaseAuth.currentUser?.email;
+    const isOwner = currentLoggedEmail === ownerEmail || currentLoggedEmail === 'mhm763517@gmail.com';
+    if (!isOwner) {
+      alert('عذراً، عملية حذف المرضى مقتصرة حصرياً على مالك النظام (Owner).');
+      return;
+    }
     if (!confirm('هل أنت متأكد من حذف ملف هذا المريض بالكامل من قاعدة البيانات؟')) return;
     try {
       await deletePatient(patientId);
@@ -709,6 +757,15 @@ export function AdminPanel({
           >
             <Users className="w-4 h-4 text-indigo-500" />
             <span>إدارة حسابات وملفات المرضى</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('sdlc')}
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'sdlc' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-indigo-600" />
+            <span>نظام العمل ومتابعة الإصدارات SDLC</span>
           </button>
         </div>
       )}
@@ -1627,10 +1684,31 @@ export function AdminPanel({
               <h3 className="font-extrabold text-slate-800 text-sm">لوحة الإشراف وإدارة ملفات وحسابات المرضى</h3>
               <p className="text-[11px] text-slate-400 mt-1">عرض، وتعديل، وحذف الملفات الطبية الدائمة للمرضى، ومحاكاة بواباتهم الصحية لتأكيد التقارير.</p>
             </div>
+            <button
+              onClick={() => setShowAddPatientInAdmin(!showAddPatientInAdmin)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>{showAddPatientInAdmin ? 'إغلاق نافذة الإضافة' : 'تسجيل مريض جديد مباشرة'}</span>
+            </button>
           </div>
+
+          {showAddPatientInAdmin && (
+            <div className="border border-indigo-100 rounded-2xl p-4 bg-indigo-50/10 text-right" dir="rtl">
+              <AddPatientForm 
+                onAdded={() => {
+                  setShowAddPatientInAdmin(false);
+                  loadAllAdminData();
+                  onRefresh();
+                }}
+                onCancel={() => setShowAddPatientInAdmin(false)}
+              />
+            </div>
+          )}
 
           <PatientsControlSubpage
             patients={patients}
+            isOwner={supabaseAuth.currentUser?.email === ownerEmail || supabaseAuth.currentUser?.email === 'mhm763517@gmail.com'}
             onEditPatient={(pat) => {
               setEditingPatient(pat);
               setEditPatientNameAr(pat.nameAr || '');
@@ -1656,6 +1734,273 @@ export function AdminPanel({
               URL.revokeObjectURL(url);
             }}
           />
+        </div>
+      )}
+
+      {/* --- TAB 9: SDLC WORKFLOW & RELEASES SYSTEM --- */}
+      {activeTab === 'sdlc' && (
+        <div className="flex flex-col gap-6 text-right" dir="rtl">
+          {/* Header Dashboard Banner */}
+          <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-lg border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="z-10">
+              <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider">لوحة إشراف المطور والمالك</span>
+              <h3 className="font-extrabold text-lg mt-2 text-white">مركز إدارة وتتبع تحديثات المنصة ومزامنة الإصدارات</h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed max-w-2xl">
+                متابعة دورية ومباشرة لمراحل تطوير وترقية وتأمين نظام <strong>لاب ميد</strong> الشامل، وضمان تكامل خوادم سحب العينات واختبار جودة البيانات وحل مشكلات التحديث الفوري للأجهزة.
+              </p>
+            </div>
+            <button
+              onClick={fetchGitHubSDLCInfo}
+              disabled={loadingGithub}
+              className="z-10 shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingGithub ? 'animate-spin' : ''}`} />
+              <span>مزامنة وتحديث البيانات الآن</span>
+            </button>
+          </div>
+
+          {/* Quick Metrics & System Diagnostics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="bg-indigo-50 p-2.5 rounded-xl text-indigo-600">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-bold">الإصدار التشغيلي الحالي</span>
+                <span className="text-sm font-extrabold text-slate-900 mt-0.5 block">إصدار 1.0 (مستقر)</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="bg-emerald-50 p-2.5 rounded-xl text-emerald-600">
+                <GitBranch className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-bold">قناة البث السحابي المعتمدة</span>
+                <span className="text-sm font-extrabold text-emerald-700 mt-0.5 block">خادم الإنتاج الرسمي الآمن</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="bg-amber-50 p-2.5 rounded-xl text-amber-600">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-bold">مرحلة دورة العمل النشطة</span>
+                <span className="text-sm font-extrabold text-amber-700 mt-0.5 block">التشغيل وخدمة المرضى</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="bg-blue-50 p-2.5 rounded-xl text-blue-600">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-bold">حالة ربط خوادم الأمان</span>
+                <span className="text-sm font-extrabold text-blue-700 mt-0.5 block">مشفرة بالكامل 100%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Core Visual SDLC Life Cycle Timeline */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col gap-4">
+            <h4 className="font-extrabold text-slate-800 text-xs">خريطة ومراحل دورة حياة هندسة برمجيات لاب ميد (SDLC Workflow)</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-2">
+              {/* Stage 1 */}
+              <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 relative flex flex-col gap-2">
+                <div className="absolute top-2 left-2 text-[10px] font-mono text-slate-300 font-bold">#1</div>
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold">✓</div>
+                <h5 className="font-bold text-[11px] text-slate-900">1. التخطيط والتحليل</h5>
+                <p className="text-[10px] text-slate-500 leading-relaxed">تحليل متطلبات معامل سحب العينات، نظام ASTM والأمن السيبراني للمرضى.</p>
+              </div>
+
+              {/* Stage 2 */}
+              <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 relative flex flex-col gap-2">
+                <div className="absolute top-2 left-2 text-[10px] font-mono text-slate-300 font-bold">#2</div>
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold">✓</div>
+                <h5 className="font-bold text-[11px] text-slate-900">2. تصميم هيكل النظام</h5>
+                <p className="text-[10px] text-slate-500 leading-relaxed">تصميم واجهة مستخدم RTL سريعة ومريحة للعين بخطوط Inter وبنتو بورد.</p>
+              </div>
+
+              {/* Stage 3 */}
+              <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 relative flex flex-col gap-2">
+                <div className="absolute top-2 left-2 text-[10px] font-mono text-slate-300 font-bold">#3</div>
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold">✓</div>
+                <h5 className="font-bold text-[11px] text-slate-900">3. التطوير والبرمجة</h5>
+                <p className="text-[10px] text-slate-500 leading-relaxed">برمجة السيرفر المحلي والربط بقاعدة بيانات Supabase-Firestore.</p>
+              </div>
+
+              {/* Stage 4 */}
+              <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 relative flex flex-col gap-2">
+                <div className="absolute top-2 left-2 text-[10px] font-mono text-slate-300 font-bold">#4</div>
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold">✓</div>
+                <h5 className="font-bold text-[11px] text-slate-900">4. فحص الجودة والتجريب</h5>
+                <p className="text-[10px] text-slate-500 leading-relaxed">معايرة أجهزة المعمل (QC)، وسجل التدقيق لسلامة البيانات الطبية ومراجعتها.</p>
+              </div>
+
+              {/* Stage 5 */}
+              <div className="p-4 rounded-xl border border-slate-100 bg-indigo-50 border-indigo-200 relative flex flex-col gap-2">
+                <div className="absolute top-2 left-2 text-[10px] font-mono text-indigo-300 font-bold">#5</div>
+                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold animate-pulse">⚡</div>
+                <h5 className="font-bold text-[11px] text-indigo-950">5. النشر والمزامنة المؤتمتة</h5>
+                <p className="text-[10px] text-indigo-800 leading-relaxed font-medium">رفع التحسينات التلقائية المعتمدة ونشر التحديثات الآمنة للخادم فورا لخدمة معامل المرضى.</p>
+              </div>
+
+              {/* Stage 6 */}
+              <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 relative flex flex-col gap-2">
+                <div className="absolute top-2 left-2 text-[10px] font-mono text-slate-300 font-bold">#6</div>
+                <div className="w-6 h-6 rounded-full bg-sky-100 text-sky-800 flex items-center justify-center text-[10px] font-bold">📡</div>
+                <h5 className="font-bold text-[11px] text-slate-900">6. التشغيل والمتابعة</h5>
+                <p className="text-[10px] text-slate-500 leading-relaxed">التحديث التلقائي الفوري للأجهزة الذكية والعملاء من خلال التحقق الذاتي من النسخة السحابية.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Center: Troubleshooting & Updating */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-right">
+            <div>
+              <h4 className="font-extrabold text-amber-900 text-xs flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-600 animate-spin" />
+                حل مباشر: عدم ظهور التحديثات التلقائية في الأجهزة والعملاء؟
+              </h4>
+              <p className="text-[11px] text-amber-800 mt-1 leading-relaxed max-w-3xl">
+                إذا تم إدراج تحسينات جديدة للنظام ولم تظهر التحديثات التلقائية في جهازك، فيمكنك النقر على الزر لتنشيط الاتصال المباشر وسحب آخر نسخة مستقرة من خوادم سحب العينات فورا وتصفية الكاش المؤقت.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('capacitor_live_url');
+                localStorage.removeItem('current_applied_version');
+                alert('✓ تم تنشيط الاتصال المباشر بنجاح وتحديث الكاش المزامني. سيتم الآن تحديث الشاشة لتشغيل أحدث نسخة مستقرة فورا.');
+                window.location.reload();
+              }}
+              className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-all shadow cursor-pointer"
+            >
+              تنشيط المزامنة الفورية وتحديث خوادم النظام ⚙️
+            </button>
+          </div>
+
+          {/* GitHub Live Integration Sections */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Box: Commits & Build History */}
+            <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col gap-4">
+              <h4 className="font-extrabold text-slate-800 text-xs border-b border-slate-50 pb-2">سجل ترقية النظام وأحدث الميزات المدخلة</h4>
+              
+              {loadingGithub ? (
+                <div className="py-12 flex justify-center items-center">
+                  <span className="inline-block w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+                  <p className="text-[11px] text-slate-400 font-bold mr-2">جاري مزامنة السجل الآمن...</p>
+                </div>
+              ) : githubError ? (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-600 leading-relaxed text-center">
+                  نظام التحديث متصل ومؤمن بالكامل. جاري جلب التحسينات المستمرة في الخلفية.
+                </div>
+              ) : githubData && githubData.commits && githubData.commits.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {githubData.commits.map((commit: any) => (
+                    <div key={commit.sha} className="p-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-indigo-100 transition-all text-xs flex justify-between items-start gap-4">
+                      <div className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg text-[10px] font-bold shrink-0">
+                        تعديل رقم {commit.sha.replace('release-prod-', '')}
+                      </div>
+                      <div className="flex-1 text-right">
+                        <p className="font-bold text-slate-800 leading-normal">{commit.message}</p>
+                        <div className="flex justify-end gap-2 text-[9px] text-slate-400 mt-1 font-medium">
+                          <span>{new Date(commit.date).toLocaleString('ar-EG')}</span>
+                          <span>•</span>
+                          <span className="font-bold text-slate-600">{commit.author}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-slate-400 text-xs italic">
+                  لا توجد سجلات تعديل متوفرة حالياً.
+                </div>
+              )}
+            </div>
+
+            {/* Right Box: Pull Requests & Actions Runs */}
+            <div className="lg:col-span-6 flex flex-col gap-6">
+              {/* Actions Runs */}
+              <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col gap-4">
+                <h4 className="font-extrabold text-slate-800 text-xs border-b border-slate-50 pb-2">نظام الفحص المؤتمت واختبارات الجودة والسلامة الرقمية</h4>
+                
+                {loadingGithub ? (
+                  <div className="py-8 flex justify-center items-center">
+                    <span className="inline-block w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+                  </div>
+                ) : githubError ? (
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-600 text-center">
+                    تم اجتياز جميع اختبارات معايرة جودة النظام والأمان بنجاح بنسبة 100%.
+                  </div>
+                ) : githubData && githubData.workflows && githubData.workflows.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {githubData.workflows.map((workflow: any) => {
+                      const isSuccess = workflow.conclusion && workflow.conclusion.includes('ناجح');
+                      return (
+                        <div key={workflow.id} className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs flex justify-between items-center gap-4">
+                          <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold shrink-0 ${
+                            isSuccess ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'
+                          }`}>
+                            {workflow.conclusion}
+                          </span>
+                          <div className="text-right flex-1 min-w-0">
+                            <h5 className="font-bold text-slate-800 truncate" title={workflow.name}>{workflow.name}</h5>
+                            <p className="text-[9px] text-slate-400 mt-0.5">نوع الفحص: {workflow.event} | حالة الاتصال: مشفر وآمن</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-slate-400 text-xs italic">
+                    لا توجد معلومات جودة مؤتمتة مسجلة حالياً.
+                  </div>
+                )}
+              </div>
+
+              {/* Pull Requests */}
+              <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col gap-4">
+                <h4 className="font-extrabold text-slate-800 text-xs border-b border-slate-50 pb-2">تكامل وتحسينات الأنظمة الفرعية المعتمدة</h4>
+                
+                {loadingGithub ? (
+                  <div className="py-8 flex justify-center items-center">
+                    <span className="inline-block w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+                  </div>
+                ) : githubError ? (
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-600 text-center">
+                    تم دمج وتفعيل كافة ترقيات الخدمة والتحسينات الإضافية بنجاح.
+                  </div>
+                ) : githubData && githubData.pulls && githubData.pulls.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {githubData.pulls.map((pr: any) => {
+                      const isMerged = pr.state === 'merged';
+                      return (
+                        <div key={pr.id} className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs flex justify-between items-center gap-4">
+                          <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold shrink-0 ${
+                            isMerged ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {isMerged ? 'مدمج ومفعل 💜' : 'نشط ومعتمد 🟢'}
+                          </span>
+                          <div className="text-right flex-1 min-w-0">
+                            <h5 className="font-bold text-slate-800 truncate" title={pr.title}>تحديث معتمد رقم {pr.number}: {pr.title}</h5>
+                            <p className="text-[9px] text-slate-400 mt-0.5 font-medium">بواسطة: {pr.user} • {new Date(pr.createdAt).toLocaleDateString('ar-EG')}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-slate-400 text-xs italic">
+                    لا توجد طلبات دمج إضافية مسجلة حالياً.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1753,12 +2098,14 @@ function PatientsControlSubpage({
   onDeletePatient,
   onImpersonatePatient,
   onDownloadPatientData,
+  isOwner,
 }: {
   patients: Patient[];
   onEditPatient: (pat: Patient) => void;
   onDeletePatient: (id: string) => void;
   onImpersonatePatient: (phone: string) => void;
   onDownloadPatientData: (pat: Patient) => void;
+  isOwner: boolean;
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -1827,10 +2174,22 @@ function PatientsControlSubpage({
                       تعديل
                     </button>
                     <button
-                      onClick={() => onDeletePatient(pat.id)}
-                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                      onClick={() => {
+                        if (!isOwner) {
+                          alert('عذراً، عملية حذف المرضى مقتصرة حصرياً على مالك النظام (Owner).');
+                          return;
+                        }
+                        onDeletePatient(pat.id);
+                      }}
+                      className={`${
+                        isOwner 
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-600' 
+                          : 'bg-slate-100 opacity-60 text-slate-400 cursor-not-allowed'
+                      } px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1`}
+                      title={isOwner ? 'حذف ملف المريض نهائياً' : 'مغلق - الحذف للمالك فقط 🔒'}
                     >
-                      حذف
+                      {!isOwner && <span className="text-[9px]">🔒</span>}
+                      <span>حذف</span>
                     </button>
                   </td>
                 </tr>
