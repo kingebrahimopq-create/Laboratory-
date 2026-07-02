@@ -59,7 +59,6 @@ async function runPushWithHistory() {
       remote: 'origin',
       ref: 'main',
       singleBranch: true,
-      depth: 1,
       onAuth: () => ({
         username: 'git',
         password: token

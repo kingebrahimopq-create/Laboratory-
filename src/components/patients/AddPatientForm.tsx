@@ -18,14 +18,17 @@ export function AddPatientForm({ onAdded, onCancel }: { onAdded: () => void; onC
     setLoading(true);
 
     try {
-      if (!name || !nameAr || !phone || !gender || !dob) {
-        throw new Error('الرجاء تعبئة كافة الحقول المطلوبة / Please fulfill all required fields');
+      if (!nameAr || !phone || !gender || !dob) {
+        throw new Error('الرجاء تعبئة كافة الحقول الأساسية (الاسم بالعربي، رقم الهاتف، الجنس، تاريخ الميلاد)');
       }
 
+      // Use English name if entered, otherwise fallback to the Arabic name
+      const finalEnglishName = name.trim() || nameAr.trim();
+
       const patientData = {
-        name,
-        nameAr,
-        phone,
+        name: finalEnglishName,
+        nameAr: nameAr.trim(),
+        phone: phone.trim(),
         gender,
         dob: new Date(dob),
         address: address || undefined,
@@ -79,13 +82,12 @@ export function AddPatientForm({ onAdded, onCancel }: { onAdded: () => void; onC
 
         {/* English Name */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-slate-600">Patient's Name (English) *</label>
+          <label className="text-xs font-semibold text-slate-600">Patient's Name (English) - اختياري</label>
           <input
             type="text"
-            required
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="e.g. Yousef Jassim Alshammari"
+            placeholder="e.g. Yousef Jassim Alshammari (Optional)"
             className="p-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-transparent text-left"
             dir="ltr"
           />
