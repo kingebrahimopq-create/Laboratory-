@@ -22,7 +22,7 @@ async function runPushWithHistory() {
   const repoUrl = 'https://github.com/kingebrahimopq-create/Laboratory-';
   const repoOwner = 'kingebrahimopq-create';
   const repoName = 'Laboratory-';
-  const targetBranch = 'update-laboratory';
+  const targetBranch = 'main';
 
   console.log('--------------------------------------------------');
   console.log('🚀 Clean GitHub Push with History Engine starting...');
@@ -59,7 +59,6 @@ async function runPushWithHistory() {
       remote: 'origin',
       ref: 'main',
       singleBranch: true,
-      depth: 1,
       onAuth: () => ({
         username: 'git',
         password: token
@@ -133,6 +132,11 @@ async function runPushWithHistory() {
     console.log(JSON.stringify(pushResult, null, 2));
 
     // 6. Create Pull Request to main
+    if (targetBranch === 'main') {
+      console.log('🎉 Pushed directly to "main" branch! Skipping Pull Request creation.');
+      return;
+    }
+
     console.log('Checking or creating Pull Request to trigger the workflow...');
     const prsUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/pulls`;
     
